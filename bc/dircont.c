@@ -5,6 +5,7 @@ void dcl_init(DIRCONT *dcl) {
 	dcl->head = NULL;
 	dcl->cur = NULL;
 	dcl->ino_self = 0;
+	dcl->count = 0;
 }
 
 DIRCONT *dcl_create() {
@@ -31,7 +32,7 @@ bool dcl_add(DIRCONT *dcl, struct dirent *entry) {
 	}
 
 	dcl->tail = dce;
-
+	++(dcl->count);
 	return true;
 }
 

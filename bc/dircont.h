@@ -5,7 +5,11 @@
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <dirent.h>
+#include <linux/limits.h>
+
+typedef struct dirent dirent;
 
 // Single-linked forward list with end pointer
 // Add: O(1)
@@ -20,6 +24,7 @@ typedef struct {
 	DIRCONT_ENTRY *tail;
 	DIRCONT_ENTRY *cur;
 	__ino64_t ino_self;
+	uint32_t count;
 } DIRCONT;
 
 void dcl_init(DIRCONT *dcl);
