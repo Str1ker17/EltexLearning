@@ -11,6 +11,7 @@ ssize_t offset;
 
 void dcl_init(DIRCONT *dcl) {
 	dcl->head = NULL;
+	dcl->tail = NULL;
 	dcl->cur = NULL;
 	dcl->ino_self = 0;
 	dcl->count = 0;
@@ -109,6 +110,7 @@ DIRCONT_ENTRY *dcl_at(DIRCONT *dcl, ssize_t index) {
 	return dcl_at_core(dcl->head, index);
 }
 
+// O(n log n), I hope
 void dcl_quick_sort_core(DIRCONT_ENTRY *head, DIRCONT_ENTRY *tail, ssize_t len
 	, int(*comparator)(DIRCONT_ENTRY*, DIRCONT_ENTRY*)) {
 	DIRCONT_ENTRY *l_entry = head, *r_entry = tail;

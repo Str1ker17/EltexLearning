@@ -34,7 +34,9 @@ enum raw_keys {
 	, RAW_KEY_ENTER = 10
 	, RAW_KEY_NUMPAD_ENTER = 343
 	, RAW_KEY_HOME = 0x1b5b317e
+	, RAW_KEY_HOME_ALT = 0x106
 	, RAW_KEY_END = 0x1b5b347e
+	, RAW_KEY_END_ALT = 0x168
 };
 
 bool ncurses_raise_error(const char *x, const char *file, const int line);

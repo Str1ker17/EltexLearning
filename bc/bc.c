@@ -19,7 +19,6 @@
 
 #include <ncursesw/ncurses.h>
 #include <locale.h>
-//#include <glib.h>
 
 #include <unistd.h>
 #include <linux/limits.h>
@@ -31,8 +30,6 @@
 #include "ncurses_util.h"
 
 #define nullptr NULL
-#define COLOR_INTENSITY 8
-
 
 #ifndef DT_DIR
 #define DT_DIR 4
@@ -42,16 +39,16 @@
 #define max(a,b) ((a) > (b) ? (a) : (b))
 
 typedef struct {
-	WINDOW *curs_win;
-	WINDOW *curs_pad;
+	WINDOW *curs_win; // ncurses-окно
+	WINDOW *curs_pad; // ncurses-pad, не реализовано
 	char *path; // текущая директория в виде строки
 	DIRPATH dpath; // текущая директория в виде связного списка
-	DIRCONT contents;
-	int top; // смещение относительно верха
+	DIRCONT contents; // содержимое текущей директории (файлы и директории) в виде связного списка
+	int top; // смещение ncurses-окна относительно верха (прокрутка), не реализовано
 	int position; // индекс выделенного элемента в contents
 	int width;
 	int height;
-	bool active;
+	bool active; // активна ли эта панель
 	bool redraw; // требуется ли перерисовка
 } BCPANEL;
 
@@ -60,7 +57,7 @@ void init_panel(BCPANEL *panel, int rows_panel, int cols_panel, int y, int x, ch
 	panel->position = 0;
 
 	WINDOW *wnd = newwin(rows_panel, cols_panel, y, x);
-	//WINDOW *pad = subpad(wnd, 1, cols_panel, 0, 0);
+	//WINDOW *pad = newpad(wnd, 1, cols_panel, 0, 0);
 	nassert(wnd);
 	//nassert(pad);
 	getmaxyx(wnd, panel->height, panel->width);
@@ -68,11 +65,11 @@ void init_panel(BCPANEL *panel, int rows_panel, int cols_panel, int y, int x, ch
 	panel->curs_win = wnd;
 	//panel->curs_pad = pad;
 	nassert(scrollok(wnd, true)); // включаем скроллинг; также wsetscrreg(WINDOW*, int top, int bot)
-	//panel->path = getcwd(NULL, PATH_MAX);
+	//nassert(wsetscrreg(wnd, 1, 8));
+
 	dpt_init(&panel->dpath, path);
 	panel->path = dpt_string(&panel->dpath, NULL);
 
-	//crassert(panel->path != NULL);
 	dcl_init(&panel->contents);
 }
 
@@ -101,11 +98,12 @@ int fs_log_comparator(DIRCONT_ENTRY *left, DIRCONT_ENTRY *right) {
 #endif
 
 void reread_files(BCPANEL *panel) {
-	struct stat st;
+	struct stat st = { .st_ino = 0 };
 	stat(panel->path, &st); // TODO: check for error
 	if(st.st_ino == panel->contents.ino_self)
 		return;
 
+	// пытаемся открыть папку, при неудаче откатываемся на уровень выше
 	DIR *dir;
 	while(true) {
 		dir = opendir(panel->path);
@@ -126,6 +124,9 @@ void reread_files(BCPANEL *panel) {
 			// save ourselves
 			continue;
 		}
+		if(strcmp(panel->path, "/") == 0 && strcmp(entry->d_name, "..") == 0) {
+			continue;
+		}
 
 		crassert(dcl_push_back(&panel->contents, entry));
 	}
@@ -134,16 +135,21 @@ void reread_files(BCPANEL *panel) {
 	panel->contents.ino_self = st.st_ino;
 
 	dcl_quick_sort(&panel->contents, &fs_log_comparator);
+
+	//delwin(panel->curs_pad);
+	//panel->curs_pad = newpad(panel->contents.count, 40); // FIXME
 }
 
 void print_files(BCPANEL *panel) {
 	WINDOW *wnd = panel->curs_win;
+	//WINDOW *wnd = panel->curs_pad;
 	DIRCONT *cont = &panel->contents;
+	DIRCONT_ENTRY *cursor = NULL;
 	struct dirent *curr;
 	int pos = 0;
 	int splitter1 = panel->width / 2 + 4;
 	mvwvline(wnd, 1, splitter1, '\'', panel->height);
-	while((curr = dcl_next(cont)) != NULL) {
+	while((curr = dcl_next_r(cont, &cursor)) != NULL) {
 		// 2 is rows skipped from the top corner of window
 		// 16 is max chars in filename
 		if(panel->active && panel->position == pos) {
@@ -180,6 +186,7 @@ void fs_move(BCPANEL *panel) {
 	DIRCONT_ENTRY *cursor = NULL;
 	struct dirent *curr;
 	int pos = 0;
+	// смотрим, в какую по списку папку нужно перейти
 	while(true) {
 		curr = dcl_next_r(dcl, &cursor);
 		if(curr == NULL)
@@ -194,18 +201,21 @@ void fs_move(BCPANEL *panel) {
 
 	// сохраняем последний каталог
 	dirent prev_copy = { .d_name = "\0" };
-	if(dpt != NULL) prev_copy = dpt->tail->entry;
+	if(dpt->tail != NULL) prev_copy = dpt->tail->entry;
+	// и каталог на который нажали
+	dirent prev_sel = *curr;
 
 	crassert(dpt_move(dpt, curr->d_name));
 	free(panel->path);
 	panel->path = dpt_string(dpt, NULL);
 	panel->position = 0;
 
+	// перечитаем позже
+	// нет, сейчас
+	reread_files(panel);
+
 	// ищем каталог из которого вышли, если вышли
-	if(strcmp(curr->d_name, "..") == 0) {
-		// перечитаем позже
-		// нет, сейчас
-		reread_files(panel);
+	if(strcmp(prev_sel.d_name, "..") == 0) {
 		dcl = &panel->contents;
 
 		pos = 0;
@@ -221,6 +231,10 @@ void fs_move(BCPANEL *panel) {
 			pos++;
 		}
 	}
+
+	// на случай, если в каталог не получилось зайти, нужно обновить строку
+	free(panel->path);
+	panel->path = dpt_string(dpt, NULL);
 
 	// а вот перерисуем позже
 	panel->redraw = true;
@@ -250,14 +264,6 @@ void redraw_panel(BCPANEL *panel) {
 	//nassert(box(wnd, ACS_VLINE, ACS_HLINE));
 	//nassert(box(wnd, '\'', '\''));
 	nassert(wborder(wnd, '\'', '\'', '\'', '\'', '\'', '\'', '\'', '\''));
-	/*wborder(wnd
-		, 0xff5c, 0xff5c
-		, 0xff5c, 0xff5c
-		, *"\342\224\230"
-		, *"\342\224\220"
-		, *"\342\224\224"
-		, *"\342\224\214"
-	);*/
 
 	// выводим текущую папку в заголовке
 	if(panel->active) {
@@ -308,8 +314,8 @@ int main(int argc, char **argv) {
 	nassert(initscr());
 
 	nassert(noecho());
-	//nassert(cbreak());
-	nassert(raw());
+	nassert(cbreak());
+	//nassert(raw());
 	//intrflush(stdscr, false);
 	nassert(keypad(stdscr, true));
 
@@ -339,13 +345,14 @@ int main(int argc, char **argv) {
 	nassert(wbkgd(menubar, COLOR_PAIR(4)));
 
 	int cl_y = rows - 2;
+	chtype single_c = 0;
 
 	while (true) {
 		// draw
 		//nassert(werase(menubar));
 		nassert(werase(hintbar));
-		if(pleft.redraw || pright.redraw)
-			nassert(werase(shellbar));
+		//if(pleft.redraw || pright.redraw)
+		nassert(werase(shellbar));
 		//nassert(werase(fnkeybar));
 
 		nassert(mvwaddstr(menubar, 0, 1, "Menu"));
@@ -353,31 +360,35 @@ int main(int argc, char **argv) {
 		nassert(mvwprintw(hintbar, 0, 0, "Hint: %s", hint_str));
 
 		int cl_x = snprintf(shell_str, sizeof(shell_str)
-			, "[nosh %s]$ ", pcurr->dpath.tail->entry.d_name);
+			, "[nosh %.29s]$ ", pcurr->dpath.tail ? pcurr->dpath.tail->entry.d_name : "/");
 		nassert(mvwaddstr(shellbar, 0, 0, shell_str));
+		if(single_c != 0)
+			nassert(mvwaddch(shellbar, 0, cl_x, single_c));
 
-		nassert(mvwaddattrfstr(fnkeybar, 0, cols - 8, 2, "10", A_BOLD));
+		mvwaddattrfstr(fnkeybar, 0, cols - 8, 2, "10", A_BOLD);
 		nassert(wattron(fnkeybar, COLOR_PAIR(4)));
-		nassert(mvwaddattrfstr(fnkeybar, 0, cols - 6, 5, "Quit\n", A_NORMAL));
+		mvwaddattrfstr(fnkeybar, 0, cols - 6, 5, "Quit", A_NORMAL);
 		nassert(wattroff(fnkeybar, COLOR_PAIR(4)));
 
 		redraw_panel(&pleft);
 		redraw_panel(&pright);
 
 		nassert(wnoutrefresh(stdscr));
-		nassert(wnoutrefresh(left));
-		nassert(wnoutrefresh(right));
-		//nassert(pnoutrefresh(left, ));
 
 		nassert(wnoutrefresh(menubar));
 		nassert(wnoutrefresh(hintbar));
 		nassert(wnoutrefresh(shellbar));
 		nassert(wnoutrefresh(fnkeybar));
+
+		nassert(wnoutrefresh(left));
+		nassert(wnoutrefresh(right));
+		//nassert(pnoutrefresh(left, pleft.top, 1, 3, 1, pleft.height, pleft.width));
+		//nassert(pnoutrefresh(right, pright.top, 1, 3, cols - cols_panel, pright.height, pright.width));
+
 		nassert(doupdate());
 
 		// перемещаем курсор на командную строку
 		nassert(wmove(stdscr, cl_y, cl_x));
-		//switch_panel = false;
 
 		// handle action
 		int c = getch();
@@ -403,20 +414,26 @@ int main(int argc, char **argv) {
 		switch (raw_key) {
 			case KEY_UP:
 				pcurr->position = max(0, pcurr->position - 1);
+				nassert(wscrl(pcurr->curs_win, 1));
 				pcurr->redraw = true;
 				break;
 
 			case KEY_DOWN:
 				pcurr->position = min(pcurr->contents.count - 1, pcurr->position + 1);
+				nassert(wscrl(pcurr->curs_win, -1));
 				pcurr->redraw = true;
 				break;
 
 			case RAW_KEY_HOME:
+			case RAW_KEY_HOME_ALT:
+			//case KEY_HOME:
 				pcurr->position = 0;
 				pcurr->redraw = true;
 				break;
 
 			case RAW_KEY_END:
+			case RAW_KEY_END_ALT:
+			//case KEY_END:
 				pcurr->position = pcurr->contents.count - 1;
 				pcurr->redraw = true;
 				break;
@@ -435,7 +452,7 @@ int main(int argc, char **argv) {
 
 			default: /*redraw = false;*/
 				if (isprint(c)) {
-					nassert(mvwaddch(shellbar, 0, cl_x, c));
+					single_c = c;
 				}
 				else {
 					snprintf(hint_str, sizeof(hint_str), "pressed key is 0x%lx", raw_key);
