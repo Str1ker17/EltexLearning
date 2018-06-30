@@ -10,21 +10,20 @@ bool dpt_move(DIRPATH *dpt, char *subdir) {
 	if(strcmp(subdir, ".") == 0)
 		return true; // already there
 	if(strcmp(subdir, "..") == 0) {
-		dpt_up(dpt);
-		return true;
+		return dpt_up(dpt);
 	}
 	dirent entry;
 	strncpy(entry.d_name, subdir, NAME_MAX);
-	return dcl_add(dpt, &entry);
+	return dcl_push_back(dpt, &entry);
 }
 
-// TODO: this is O(n), but may become O(1) after some work
-void dpt_up(DIRPATH *dpt) {
-	if(dpt->head == NULL)
-		return; // nowhere to move
-	DIRCONT_ENTRY *cur = dpt->head;
-	while(cur->next != NULL && cur->next != dpt->tail)
-		cur = cur->next;
+// DONE: this is O(1)
+bool dpt_up(DIRPATH *dpt) {
+	if(dpt->tail == NULL)
+		return false; // nowhere to move
+	DIRCONT_ENTRY *cur = dpt->tail;
+	if(cur->prev != NULL)
+		cur = cur->prev;
 
 	// remove tail
 	if(cur->next == NULL) {
@@ -37,11 +36,14 @@ void dpt_up(DIRPATH *dpt) {
 		dpt->tail = cur;
 		dpt->count--;
 	}
+	return true;
 }
 
 char *dpt_string(DIRPATH *dpt, char *buf) {
 	if(buf == NULL) {
 		buf = (char*)malloc(PATH_MAX);
+		if(buf == NULL)
+			return NULL;
 	}
 	char *ptr = buf;
 
@@ -50,7 +52,8 @@ char *dpt_string(DIRPATH *dpt, char *buf) {
 	while((entry = dcl_next(dpt)) != NULL) {
 		// nice solution :)
 		// https://www.guyrutenberg.com/2008/12/20/expanding-macros-into-string-constants-in-c
-		ptr += snprintf(ptr, NAME_MAX + 1, "/%s", entry->d_name);
+		
+		ptr += snprintf(ptr, NAME_MAX + 2, "/%s", entry->d_name); // TODO: check for overflow
 		depth++;
 	}
 
