@@ -1,5 +1,6 @@
 #include "ncurses_util.h"
 #include <stdlib.h>
+#include <assert.h>
 
 bool ncurses_raise_error(const char *x, const char *file, const int line) {
 	endwin();
@@ -36,4 +37,22 @@ int mvwaddattrfstr(WINDOW *wnd, int y, int x, int len, char *str, chtype attr) {
 		pos++;
 	}
 	return 0; // OK
+}
+
+int64_t raw_wgetch(WINDOW *wnd) {
+	int c = wgetch(wnd);
+	nassert(c);
+	int64_t raw_key = 0;
+	if (c == RAW_KEY_ESC) {
+		nassert(nodelay(wnd, true)); // is it safe?
+		do {
+			assert(0 <= c && c < 256);
+			raw_key = raw_key << 8 | c;
+		} while ((c = wgetch(wnd)) != ERR);
+		nassert(nodelay(wnd, false));
+	}
+	else {
+		raw_key = c;
+	}
+	return raw_key;
 }

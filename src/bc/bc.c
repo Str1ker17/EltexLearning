@@ -27,16 +27,13 @@
 
 #include "dircont.h"
 #include "dirpath.h"
-#include "ncurses_util.h"
+#include "../libncurses_util/ncurses_util.h"
 
 #define nullptr NULL
 
 #ifndef DT_DIR
 #define DT_DIR 4
 #endif
-
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#define max(a,b) ((a) > (b) ? (a) : (b))
 
 typedef struct {
 	WINDOW *curs_win; // ncurses-окно
@@ -128,7 +125,7 @@ void reread_files(BCPANEL *panel) {
 			continue;
 		}
 
-		crassert(dcl_push_back(&panel->contents, entry));
+		custom_assert(dcl_push_back(&panel->contents, entry), ncurses_raise_error);
 	}
 
 	closedir(dir);
@@ -205,7 +202,7 @@ void fs_move(BCPANEL *panel) {
 	// и каталог на который нажали
 	dirent prev_sel = *curr;
 
-	crassert(dpt_move(dpt, curr->d_name));
+	custom_assert(dpt_move(dpt, curr->d_name), ncurses_raise_error);
 	free(panel->path);
 	panel->path = dpt_string(dpt, NULL);
 	panel->position = 0;
@@ -391,25 +388,7 @@ int main(int argc, char **argv) {
 		nassert(wmove(stdscr, cl_y, cl_x));
 
 		// handle action
-		int c = getch();
-		nassert(c);
-		//wint_t c;
-		//nassert(wget_wch(stdscr, &c));
-		int64_t raw_key = 0;
-		if (c == 27) {
-			nassert(nodelay(stdscr, true));
-			hint_str[0] = '\0';
-			do {
-				//sprintf(hint_str + strlen(hint_str), "%02x", c);
-				raw_key = raw_key << 8 | c;
-			//} while ((wget_wch(stdscr, &c)) != ERR);
-			} while ((c = getch()) != ERR);
-			//sprintf(hint_str + strlen(hint_str), ", %0lX", raw_key);
-			nassert(nodelay(stdscr, false));
-		}
-		else {
-			raw_key = c;
-		}
+		int64_t raw_key = raw_wgetch(stdscr);
 
 		switch (raw_key) {
 			case KEY_UP:
@@ -451,8 +430,8 @@ int main(int argc, char **argv) {
 				goto end_loop;
 
 			default: /*redraw = false;*/
-				if (isprint(c)) {
-					single_c = c;
+				if (isprint(raw_key)) {
+					single_c = raw_key;
 				}
 				else {
 					snprintf(hint_str, sizeof(hint_str), "pressed key is 0x%lx", raw_key);
