@@ -143,7 +143,7 @@ size_t dry_read(SCRBUF *scrbuf) {
 bool edit_char(SCRBUF *scrbuf, int cur_y, int cur_x, char c) {
 	if(scrbuf->top_line + cur_y > scrbuf->file_lines.size)
 		return false; // attempt to edit non-existent line
-	if(scrbuf->str_buf[cur_y].len <= cur_x)
+	if(scrbuf->str_buf[cur_y].visible_len <= cur_x)
 		return false; // attempt to edit non-existent char in line
 
 	SCRLINE *line = &(scrbuf->str_buf[cur_y]);

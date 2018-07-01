@@ -1,5 +1,5 @@
 #pragma once
-h
+
 #if defined(_MSC_VER)
 #undef __cplusplus
 #endif
