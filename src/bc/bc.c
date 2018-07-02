@@ -126,6 +126,8 @@ void reread_files(BCPANEL *panel) {
 		}
 
 		custom_assert(dcl_push_back(&panel->contents, entry), ncurses_raise_error);
+        free(entry);
+		
 	}
 
 	closedir(dir);
