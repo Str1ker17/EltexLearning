@@ -289,9 +289,8 @@ int main(int argc, char **argv) {
 	WINDOW *left, *right;
 	WINDOW *menubar, *hintbar, *shellbar, *fnkeybar;
 
-	BCPANEL pleft, pright;
+	BCPANEL pleft = { .active = true }, pright = { .active = false };
 	BCPANEL *pcurr = &pleft;
-	pcurr->active = true;
 
 	int rows, cols;
 
