@@ -110,7 +110,7 @@ void reread_files(BCPANEL *panel) {
 		free(panel->path);
 		panel->path = dpt_string(&panel->dpath, NULL);
 	}
-	
+
 	dcl_clear(&panel->contents);
 
 	while(true) {
@@ -126,8 +126,6 @@ void reread_files(BCPANEL *panel) {
 		}
 
 		custom_assert(dcl_push_back(&panel->contents, entry), ncurses_raise_error);
-        free(entry);
-		
 	}
 
 	closedir(dir);
@@ -291,9 +289,8 @@ int main(int argc, char **argv) {
 	WINDOW *left, *right;
 	WINDOW *menubar, *hintbar, *shellbar, *fnkeybar;
 
-	BCPANEL pleft, pright;
+	BCPANEL pleft = { .active = true }, pright = { .active = false };
 	BCPANEL *pcurr = &pleft;
-	pcurr->active = true;
 
 	int rows, cols;
 

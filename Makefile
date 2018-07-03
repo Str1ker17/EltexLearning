@@ -9,7 +9,7 @@ LDFLAGS := -lncursesw
 COMPILE := $(CFLAGS) -c
 LINK := $(LDFLAGS)
 
-solution: COMPILE := $(CFLAGS) -c
+#solution: COMPILE := $(CFLAGS) -c
 solution: subdirs libncurses_util bc be
 
 subdirs:
@@ -20,19 +20,19 @@ subdirs:
 libncurses_util: src/libncurses_util/ncurses_util.h src/libncurses_util/ncurses_util.c
 	$(CC) $(COMPILE) -std=c99 -o obj/ncurses_util.o src/libncurses_util/ncurses_util.c
 	ar rcs lib/libncurses_util.a obj/ncurses_util.o
-	
+
 bc: libncurses_util
 	$(CC) $(COMPILE) -std=c99 -o obj/bc.o src/bc/bc.c
 	$(CC) $(COMPILE) -std=c99 -o obj/dircont.o src/bc/dircont.c
 	$(CC) $(COMPILE) -std=c99 -o obj/dirpath.o src/bc/dirpath.c
-	$(CC) $(LINK) -o bin/bc.exe obj/bc.o obj/dircont.o obj/dirpath.o lib/libncurses_util.a
+	$(LD) -o bin/bc.exe obj/bc.o obj/dircont.o obj/dirpath.o lib/libncurses_util.a $(LINK)
 
 # fdopen() and fileno() are GNU extension
 be: libncurses_util
 	$(CC) $(COMPILE) -std=gnu99 -o obj/be.o src/be/be.c
 	$(CC) $(COMPILE) -std=c99 -o obj/vector.o src/be/vector.c
-	$(CC) $(LINK) -o bin/be.exe obj/be.o obj/vector.o lib/libncurses_util.a
-	
+	$(LD) -o bin/be.exe obj/be.o obj/vector.o lib/libncurses_util.a $(LINK)
+
 clean:
 	rm -rf bin
 	rm -rf lib
