@@ -1,6 +1,7 @@
-#include <stdlib.h>
-#include "dircont.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include "dircont.h"
 
 #ifdef QSORT_DEBUG
 #define fprintf(...)
@@ -91,8 +92,8 @@ struct dirent *dcl_next_r(DIRCONT *dcl, DIRCONT_ENTRY **cur) {
 }
 
 // O(n), depending on index
-DIRCONT_ENTRY *dcl_at_core(DIRCONT_ENTRY *dce, ssize_t index) {
-	ssize_t pos = 0;
+DIRCONT_ENTRY *dcl_at_core(DIRCONT_ENTRY *dce, size_t index) {
+	size_t pos = 0;
 	while(true) {
 		if(dce == NULL)
 			return NULL;
@@ -104,7 +105,7 @@ DIRCONT_ENTRY *dcl_at_core(DIRCONT_ENTRY *dce, ssize_t index) {
 	return dce;
 }
 
-DIRCONT_ENTRY *dcl_at(DIRCONT *dcl, ssize_t index) {
+DIRCONT_ENTRY *dcl_at(DIRCONT *dcl, size_t index) {
 	if(index >= dcl->count)
 		return NULL;
 	return dcl_at_core(dcl->head, index);

@@ -41,7 +41,9 @@ int mvwaddattrfstr(WINDOW *wnd, int y, int x, int len, char *str, chtype attr) {
 
 int64_t raw_wgetch(WINDOW *wnd) {
 	int c = wgetch(wnd);
-	nassert(c);
+	//nassert(c);
+	if(c == ERR)
+		return ERR;
 	int64_t raw_key = 0;
 	if (c == RAW_KEY_ESC) {
 		nassert(nodelay(wnd, true)); // is it safe?

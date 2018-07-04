@@ -5,10 +5,7 @@
 #endif
 
 #include <stdbool.h>
-#include <stdint.h>
-#include <sys/types.h>
 #include <dirent.h>
-#include <linux/limits.h>
 
 typedef struct dirent dirent;
 
@@ -38,6 +35,6 @@ bool dcl_push_back(DIRCONT *dcl, struct dirent *entry);
 void dcl_clear(DIRCONT *dcl);
 struct dirent *dcl_next(DIRCONT *dcl);
 struct dirent *dcl_next_r(DIRCONT *dcl, DIRCONT_ENTRY **cur);
-DIRCONT_ENTRY *dcl_at(DIRCONT *dcl, ssize_t index);
+DIRCONT_ENTRY *dcl_at(DIRCONT *dcl, size_t index);
 
 void dcl_quick_sort(DIRCONT *dcl, int(*comparator)(DIRCONT_ENTRY*, DIRCONT_ENTRY*));

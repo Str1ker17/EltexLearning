@@ -25,3 +25,4 @@ bool vector_push_back(VECTOR *vect, uintptr_t value);
 bool vector_pop_back(VECTOR *vect, uintptr_t *out_value);
 bool vector_shrink_to_fit(VECTOR *vect);
 uintptr_t *vector_array_ptr(VECTOR *vect);
+void vector_free(VECTOR *vect);

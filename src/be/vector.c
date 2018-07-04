@@ -1,5 +1,17 @@
 #include "vector.h"
 #include <stdlib.h>
+#include <string.h>
+
+#define realloc(ptr,size) __force_realloc(ptr,size)
+
+void *__force_realloc(void *ptr, size_t size) {
+	void *mem = malloc(size);
+	if(mem == NULL)
+		return NULL; // could not malloc more
+	memcpy(mem, ptr, size);
+	free(ptr);
+	return mem;
+}
 
 bool vector_init(VECTOR *vect, size_t initial_capacity) {
 	if((vect->array = (uintptr_t*)malloc(sizeof(uintptr_t) * initial_capacity)) == NULL)
@@ -17,6 +29,7 @@ bool vector_resize(VECTOR *vect, size_t new_capacity) {
 	if(mem == NULL)
 		return false; // could not realloc
 	vect->array = mem;
+	vect->capacity = new_capacity;
 	return true;
 }
 
@@ -39,6 +52,7 @@ bool vector_pop_back(VECTOR *vect, uintptr_t *out_value) {
 }
 
 bool vector_shrink_to_fit(VECTOR *vect) {
+	// version 1. smart realloc
 	if(!vector_resize(vect, vect->size))
 		return false;
 	vect->capacity = vect->size;
@@ -47,4 +61,8 @@ bool vector_shrink_to_fit(VECTOR *vect) {
 
 uintptr_t *vector_array_ptr(VECTOR *vect) {
 	return vect->array;
+}
+
+void vector_free(VECTOR *vect) {
+	free(vect->array);
 }

@@ -41,10 +41,10 @@ typedef struct {
 	char *path; // текущая директория в виде строки
 	DIRPATH dpath; // текущая директория в виде связного списка
 	DIRCONT contents; // содержимое текущей директории (файлы и директории) в виде связного списка
-	int top; // смещение ncurses-окна относительно верха (прокрутка), не реализовано
-	int position; // индекс выделенного элемента в contents
-	int width;
-	int height;
+	size_t top; // смещение ncurses-окна относительно верха (прокрутка), не реализовано
+	size_t position; // индекс выделенного элемента в contents
+	size_t width;
+	size_t height;
 	bool active; // активна ли эта панель
 	bool redraw; // требуется ли перерисовка
 } BCPANEL;
@@ -68,6 +68,12 @@ void init_panel(BCPANEL *panel, int rows_panel, int cols_panel, int y, int x, ch
 	panel->path = dpt_string(&panel->dpath, NULL);
 
 	dcl_init(&panel->contents);
+}
+
+void free_panel(BCPANEL *panel) {
+	dcl_clear(&panel->contents);
+	dcl_clear(&panel->dpath);
+	free(panel->path);
 }
 
 int fs_comparator(DIRCONT_ENTRY *left, DIRCONT_ENTRY *right) {
@@ -110,7 +116,7 @@ void reread_files(BCPANEL *panel) {
 		free(panel->path);
 		panel->path = dpt_string(&panel->dpath, NULL);
 	}
-
+	
 	dcl_clear(&panel->contents);
 
 	while(true) {
@@ -327,10 +333,12 @@ int main(int argc, char **argv) {
 	nassert(init_pair(4, COLOR_BLACK, COLOR_CYAN)); // file cursos highlight
 
 	// create panels
-	init_panel(&pleft, rows_panel, cols_panel, 1, 0, getcwd(NULL, 0));
+	char *left_path = getcwd(NULL, 0);
+	init_panel(&pleft, rows_panel, cols_panel, 1, 0, left_path);
 	init_panel(&pright, rows_panel, cols_panel, 1, cols - cols_panel, getenv("HOME"));
 	left = pleft.curs_win;
 	right = pright.curs_win;
+	free(left_path);
 
 	// create auxillary windows
 	nassert(menubar = newwin(1, cols, 0, 0));
@@ -391,14 +399,16 @@ int main(int argc, char **argv) {
 
 		switch (raw_key) {
 			case KEY_UP:
-				pcurr->position = max(0, pcurr->position - 1);
-				nassert(wscrl(pcurr->curs_win, 1));
+				//pcurr->position = max(0, pcurr->position - 1);
+				if(pcurr->position > 0) --(pcurr->position);
+				//nassert(wscrl(pcurr->curs_win, 1));
 				pcurr->redraw = true;
 				break;
 
 			case KEY_DOWN:
-				pcurr->position = min(pcurr->contents.count - 1, pcurr->position + 1);
-				nassert(wscrl(pcurr->curs_win, -1));
+				//pcurr->position = min(pcurr->contents.count - 1, pcurr->position + 1);
+				if(pcurr->position < pcurr->contents.count) ++(pcurr->position);
+				//nassert(wscrl(pcurr->curs_win, -1));
 				pcurr->redraw = true;
 				break;
 
@@ -429,7 +439,7 @@ int main(int argc, char **argv) {
 				goto end_loop;
 
 			default: /*redraw = false;*/
-				if (isprint(raw_key)) {
+				if ((raw_key >> 8) == 0 && isprint(raw_key)) {
 					single_c = raw_key;
 				}
 				else {
@@ -442,5 +452,7 @@ int main(int argc, char **argv) {
 end_loop:
 	nassert(endwin());
 
+	free_panel(&pleft);
+	free_panel(&pright);
 	return 0;
 }
