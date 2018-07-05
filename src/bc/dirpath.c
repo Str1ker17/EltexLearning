@@ -4,17 +4,14 @@
 #include <linux/limits.h>
 #include "dirpath.h"
 
-#define STR_EXPAND(tok) #tok
-#define STR(tok) STR_EXPAND(tok)
-
 bool dpt_move(DIRPATH *dpt, char *subdir) {
 	if(strcmp(subdir, ".") == 0)
 		return true; // already there
 	if(strcmp(subdir, "..") == 0) {
 		return dpt_up(dpt);
 	}
-	dirent entry;
-	strncpy(entry.d_name, subdir, NAME_MAX);
+	DIRCONT_ENTRY entry;
+	strncpy(entry.ent.d_name, subdir, NAME_MAX);
 	return dcl_push_back(dpt, &entry);
 }
 
@@ -22,7 +19,7 @@ bool dpt_move(DIRPATH *dpt, char *subdir) {
 bool dpt_up(DIRPATH *dpt) {
 	if(dpt->tail == NULL)
 		return false; // nowhere to move
-	DIRCONT_ENTRY *cur = dpt->tail;
+	DIRCONT_LIST_ENTRY *cur = dpt->tail;
 	if(cur->prev != NULL)
 		cur = cur->prev;
 
@@ -49,12 +46,10 @@ char *dpt_string(DIRPATH *dpt, char *buf) {
 	char *ptr = buf;
 
 	int depth = 0;
-	dirent *entry;
-	while((entry = dcl_next(dpt)) != NULL) {
-		// nice solution :)
-		// https://www.guyrutenberg.com/2008/12/20/expanding-macros-into-string-constants-in-c
-		
-		ptr += snprintf(ptr, NAME_MAX + 2, "/%s", entry->d_name); // TODO: check for overflow
+	DIRCONT_ENTRY *entry;
+	DIRCONT_LIST_ENTRY *cur = NULL;
+	while((entry = dcl_next_r(dpt, &cur)) != NULL) {
+		ptr += snprintf(ptr, NAME_MAX + 2, "/%s", entry->ent.d_name); // TODO: check for overflow
 		depth++;
 	}
 

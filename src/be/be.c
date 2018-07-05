@@ -28,6 +28,7 @@
 // reuse code
 #include "../libncurses_util/ncurses_util.h"
 #include "vector.h"
+#include <locale.h>
 
 typedef uint8_t byte;
 
@@ -97,12 +98,12 @@ int read_wet_from(SCRBUF *scrbuf, size_t offset, size_t count) {
 
 		size_t line_num = offset + i;
 		if(line_num >= scrbuf->file_lines.size) {
-			// ÔÂÂÎ∏Ú
+			// –ø–µ—Ä–µ–ª—ë—Ç
 			//*str_ptr = NULL;
 			continue;
 		}
 
-		// ÓÔÂ‰ÂÎˇÂÏ ‰ÎËÌÛ ÒÚÓÍË ÔÓ ‰‡ÌÌ˚Ï dry_read
+		// –æ–ø—Ä–µ–¥–µ–ª—è–µ–º –¥–ª–∏–Ω—É —Å—Ç—Ä–æ–∫–∏ –ø–æ –¥–∞–Ω–Ω—ã–º dry_read
 		uintptr_t file_offset = scrbuf->file_lines.array[line_num];
 		lassert(fseek(scrbuf->f, file_offset, SEEK_SET) == 0);
 		size_t line_len;
@@ -113,7 +114,7 @@ int read_wet_from(SCRBUF *scrbuf, size_t offset, size_t count) {
 			line_len = scrbuf->file_lines.array[line_num + 1] - file_offset;
 		}
 
-		// ˜ËÚ‡ÂÏ ÒÚÓÍÛ
+		// —á–∏—Ç–∞–µ–º —Å—Ç—Ä–æ–∫—É
 		*str_ptr = (char*)malloc(line_len + 1);
 		lassert(*str_ptr != NULL);
 		lassert(fread(*str_ptr, line_len, 1, scrbuf->f) == 1);
@@ -175,7 +176,7 @@ size_t dry_read(SCRBUF *scrbuf) {
 	}
 	scrbuf->filesize = pos;
 	rewind(scrbuf->f);
-	//lassert(vector_shrink_to_fit(&scrbuf->file_lines));
+	lassert(vector_shrink_to_fit(&scrbuf->file_lines));
 	return lines;
 }
 
@@ -203,6 +204,7 @@ bool edit_char(SCRBUF *scrbuf, size_t cur_y, size_t cur_x, char c) {
 }
 
 int main(int argc, char **argv) {
+	setlocale(LC_ALL, "");
 	freopen("logfile.log", "w", stderr);
 	if(argc < 2) {
 		printl("[x] Specify file to open\n");
@@ -408,7 +410,7 @@ move_cursor:
 				break;
 
 			default:
-				if ((key >> 8) == 0 && isprint(key)) { // ‡ Í‡Í Ò ÍËËÎÎËˆÂÈ?
+				if ((key >> 8) == 0 && isprint(key)) { // –∞ –∫–∞–∫ —Å –∫–∏—Ä–∏–ª–ª–∏—Ü–µ–π?
 					edit_char(&scrbuf, cur_y, cur_x, (char)key);
 				}
 				else {
