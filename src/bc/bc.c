@@ -149,7 +149,7 @@ void print_files(BCPANEL *panel) {
 	DIRCONT *cont = &panel->contents;
 	DIRCONT_ENTRY *cursor = NULL;
 	struct dirent *curr;
-	int pos = 0;
+	size_t pos = 0;
 	int splitter1 = panel->width / 2 + 4;
 	mvwvline(wnd, 1, splitter1, '\'', panel->height);
 	while((curr = dcl_next_r(cont, &cursor)) != NULL) {
@@ -188,7 +188,7 @@ void fs_move(BCPANEL *panel) {
 	DIRPATH *dpt = &panel->dpath;
 	DIRCONT_ENTRY *cursor = NULL;
 	struct dirent *curr;
-	int pos = 0;
+	size_t pos = 0;
 	// смотрим, в какую по списку папку нужно перейти
 	while(true) {
 		curr = dcl_next_r(dcl, &cursor);
@@ -302,7 +302,6 @@ int main(int argc, char **argv) {
 
 	char hint_str[200] = "\0";
 	char shell_str[40] = "\0";
-	//char buf[PATH_MAX] = "\0";
 
 	// The library uses the locale which the calling program has initialized.
 	// If the locale is not initialized, the library assumes that characters
@@ -407,7 +406,7 @@ int main(int argc, char **argv) {
 
 			case KEY_DOWN:
 				//pcurr->position = min(pcurr->contents.count - 1, pcurr->position + 1);
-				if(pcurr->position < pcurr->contents.count) ++(pcurr->position);
+				if(pcurr->position < pcurr->contents.count - 1) ++(pcurr->position);
 				//nassert(wscrl(pcurr->curs_win, -1));
 				pcurr->redraw = true;
 				break;

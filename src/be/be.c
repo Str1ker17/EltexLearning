@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
 	struct sigaction sga = {
 		  .sa_mask = 0
 		, .sa_flags = 0
-		, .sa_restorer = (void*)NULL
+		, .sa_restorer = (void(*)(void))NULL
 		, .sa_handler = signal_winch_handler
 	};
 	lassert(sigaction(SIGWINCH, &sga, NULL) == 0);
