@@ -1,6 +1,5 @@
 language: c
-install: make
-script: make debug && make release
+script: make && make debug && make release
 compiler:
   - gcc
   - clang
