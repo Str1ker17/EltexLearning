@@ -7,4 +7,4 @@ Currently done:
 
 Feel free to send issues and pull requests.
 
-Whole project status: [![Build Status](https://travis-ci.com/Str1ker17/EltexLearning.svg?branch=travis-test)](https://travis-ci.com/Str1ker17/EltexLearning)
+Whole project status for `trunk`: [![Build Status](https://travis-ci.com/Str1ker17/EltexLearning.svg?branch=trunk)](https://travis-ci.com/Str1ker17/EltexLearning)
