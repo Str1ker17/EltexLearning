@@ -1,6 +1,9 @@
 .PHONY: solution clean debug release
 
+ifeq($(CC),)
 CC := gcc
+endif
+
 LD := $(CC)
 
 CFLAGS := -Wall -O3 -march=native
