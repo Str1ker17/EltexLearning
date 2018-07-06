@@ -1,0 +1,5 @@
+language: c
+script: make && make debug && make release
+compiler:
+  - gcc
+  - clang
