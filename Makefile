@@ -1,6 +1,6 @@
 .PHONY: solution clean debug release
 
-ifeq($(CC),)
+ifeq ($(strip $(CC)),)
 CC := gcc
 endif
 
