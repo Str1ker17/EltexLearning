@@ -3,6 +3,10 @@
 #include <sys/types.h>
 #include "dircont.h"
 
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 void dcl_init(DIRCONT *dcl) {
 	dcl->head = NULL;
 	dcl->tail = NULL;
@@ -54,21 +58,7 @@ void dcl_clear(DIRCONT *dcl) {
 }
 
 // Single take, O(1)
-/*DIRCONT_ENTRY *dcl_next(DIRCONT *dcl) {
-	if (dcl->cur == NULL) {
-		dcl->cur = dcl->head;
-	}
-	else {
-		dcl->cur = dcl->cur->next;
-	}
-
-	if(dcl->cur == NULL) {
-		return NULL;
-	}
-	return &(dcl->cur->value);
-}*/
-
-// Reentrant version of above call.
+// Reentrant version.
 // Useful when not iterating over all, to avoid leaving non-NULL cur pointer.
 DIRCONT_ENTRY *dcl_next_r(DIRCONT *dcl, DIRCONT_LIST_ENTRY **cur) {
 	if (*cur == NULL) {
@@ -110,8 +100,8 @@ void dcl_quick_sort_core(DIRCONT_LIST_ENTRY *head, DIRCONT_LIST_ENTRY *tail, ssi
 	DIRCONT_LIST_ENTRY *l_entry = head, *r_entry = tail;
 	ssize_t l_idx = 0, r_idx = len - 1;
 	// берём опорный элемент
-	ssize_t m_idx = rand() % len; // get rid of dcl->count
-	//ssize_t m_idx = len / 2 + rand() % len / 4; // TODO: unstable
+	//ssize_t m_idx = rand() % len; // get rid of dcl->count
+	ssize_t m_idx = len / 2 + rand() % max(1, len / 4); // TODO: unstable?
 	DIRCONT_ENTRY m = *dcl_at_core(l_entry, m_idx); // FIXED: get copy instead of link
 
 	do {

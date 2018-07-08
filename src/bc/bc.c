@@ -1,8 +1,8 @@
 /*
- * Bionicle Commander v0.1
+ * Bionicle Commander v0.1.1
  * @Author: Str1ker
  * @Created: 28 Jun 2018
- * @Modified: 5 Jul 2018
+ * @Modified: 9 Jul 2018
  */
 
 #if defined(_MSC_VER)
@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include <ncursesw/ncurses.h>
 #include <locale.h>
@@ -22,6 +23,7 @@
 #include <linux/limits.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -29,12 +31,6 @@
 #include "dircont.h"
 #include "dirpath.h"
 #include "../libncurses_util/ncurses_util.h"
-#include <limits.h>
-#include <fcntl.h>
-
-#define nullptr NULL
-
-#undef DT_DIR
 
 // количество строк, зарезервированных под что-то, кроме списка файлов
 #define PANEL_SPEC_LINES 3
@@ -43,9 +39,9 @@ typedef struct {
 	WINDOW *curs_win; // ncurses-окно
 	//WINDOW *curs_pad; // ncurses-pad, не реализовано
 	char *path; // текущая директория в виде строки
-	DIRPATH dpath; // текущая директория в виде связного списка
+	DIRPATH dpath; // путь до текущей директории в виде связного списка
 	DIRCONT contents; // содержимое текущей директории (файлы и директории) в виде связного списка
-	size_t top_elem; // смещение ncurses-окна относительно верха (прокрутка), не реализовано
+	size_t top_elem; // смещение ncurses-окна относительно верха (прокрутка)
 	size_t position; // индекс выделенного элемента в contents
 	size_t width;
 	size_t height;
@@ -53,13 +49,26 @@ typedef struct {
 	bool redraw; // требуется ли перерисовка
 } BCPANEL;
 
-enum {
+typedef enum {
 	  CPAIR_DEFAULT = 1
 	, CPAIR_PANEL
 	, CPAIR_PANEL_TITLE
 	, CPAIR_HIGHLIGHT
 	, CPAIR_EXECUTABLE
-};
+} cpair_list;
+
+typedef enum {
+	  FS_ACTION_ENTER = 0 // cd to directory, run executable file, run associated program for others
+	, FS_ACTION_EDIT = 4 // F4
+} fs_action_e;
+
+// creative place
+/*int __verbose_chdir(const char *path) {
+	fprintf(stderr, "chdir(%s)\n", path);
+	return chdir(path);
+}
+
+#define chdir(path) __verbose_chdir(path)*/
 
 void signal_winch_handler(int signo) {
 	struct winsize size;
@@ -78,10 +87,10 @@ void init_panel(BCPANEL *panel, int rows_panel, int cols_panel, int y, int x, ch
 	nassert(wbkgd(wnd, COLOR_PAIR(CPAIR_PANEL)));
 	panel->curs_win = wnd;
 
-	dpt_init(&panel->dpath, path);
-	panel->path = dpt_string(&panel->dpath, NULL);
-
 	dcl_init(&panel->contents);
+	dpt_init(&panel->dpath, path);
+	panel->path = (char*)malloc(PATH_MAX); // minimize mallocs count
+	dpt_string(&panel->dpath, panel->path);
 }
 
 void free_panel(BCPANEL *panel) {
@@ -109,7 +118,7 @@ bool resize_screen(WINDOW **wnd_arr, int rows, int cols, int *rows_panel, int *c
 	nassert(mvwin(right_panel, 1, cols - _cols_panel));
 
 	nassert(wresize(menu_bar, 1, cols));
-	//nassert(mvwin(menu_bar, 0, 0)); // redundant
+	nassert(mvwin(menu_bar, 0, 0)); // redundant
 	nassert(wresize(hint_bar, 1, cols));
 	nassert(mvwin(hint_bar, max(1, rows - 3), 0));
 	nassert(wresize(shell_bar, 1, cols));
@@ -167,22 +176,16 @@ int vscroll(BCPANEL *panel, int lines) {
 	return lines_delta;
 }
 
-void reread_files(BCPANEL *panel) {
+bool reread_files(BCPANEL *panel) {
 	struct stat st = { .st_ino = 0 };
 	stat(panel->path, &st); // TODO: check for error
 	if(st.st_ino == panel->contents.ino_self)
-		return;
+		return true; // already there
 
 	// пытаемся открыть папку, при неудаче откатываемся на уровень выше
-	DIR *dir;
-	while(true) {
-		dir = opendir(panel->path);
-		if(dir != NULL)
-			break;
-		dpt_up(&panel->dpath);
-		free(panel->path);
-		panel->path = dpt_string(&panel->dpath, NULL);
-	}
+	DIR *dir = opendir(panel->path);
+	if(dir == NULL)
+		return false;
 	
 	dcl_clear(&panel->contents);
 	chdir(panel->path);
@@ -208,6 +211,7 @@ void reread_files(BCPANEL *panel) {
 	panel->contents.ino_self = st.st_ino;
 
 	dcl_quick_sort(&panel->contents, &fs_comparator);
+	return true;
 }
 
 void print_files(BCPANEL *panel) {
@@ -222,20 +226,12 @@ void print_files(BCPANEL *panel) {
 	mvwvline(wnd, 1, splitter1, '\'', panel->height);
 	while((curr = dcl_next_r(cont, &cursor)) != NULL) {
 		// 2 is rows skipped from the top corner of window
-		// 16 is max chars in filename
 		if(pos < panel->top_elem) {
 			++pos;
 			continue;
 		}
 
 		// tune item look
-		/*
-		switch(curr->ent.d_type) {
-			case DT_DIR:  spec = '/'; attr = A_BOLD; break; // DT_DIR
-			default: spec = ' '; attr = A_NORMAL; break;
-		}
-		*/
-
 		char spec = ' ';
 		chtype attr = A_NORMAL;
 		int cpair = CPAIR_PANEL;
@@ -264,65 +260,81 @@ void print_files(BCPANEL *panel) {
 	}
 }
 
-void fs_move(BCPANEL *panel) {
-	DIRCONT *dcl = &panel->contents;
-	DIRPATH *dpt = &panel->dpath;
-	DIRCONT_LIST_ENTRY *cursor = NULL;
-	DIRCONT_ENTRY *curr;
-	size_t pos = 0;
-	// смотрим, в какую по списку папку нужно перейти
-	while(true) {
-		curr = dcl_next_r(dcl, &cursor);
-		if(curr == NULL)
-			return;
-		if(pos == panel->position)
-			break; // gotcha
-		pos++;
-	}
+bool fs_chdir(BCPANEL *panel, char *path) {
+	if(chdir(path) == -1)
+		return false;
 
-	if(!(curr->st.st_mode & __S_IFDIR))
-		return;
+	struct dirent prev = { .d_name = "\0" };
+	char tmp[4096] = "\0";
+	strcpy(tmp, path);
+	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
+	if(panel->dpath.tail != NULL)
+		strcpy(prev.d_name, panel->dpath.tail->value.ent.d_name);
+	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
+	custom_assert(dpt_move(&panel->dpath, path), ncurses_raise_error);
+	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
+	dpt_string(&panel->dpath, panel->path);
+	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
+	custom_assert(reread_files(panel), ncurses_raise_error);
+	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
 
-	// сохраняем последний каталог
-	DIRCONT_ENTRY prev_copy = { .ent = { .d_name = "\0" } };
-	if(dpt->tail != NULL) prev_copy = dpt->tail->value;
-	// и каталог на который нажали
-	DIRCONT_ENTRY prev_sel = *curr;
-
-	custom_assert(dpt_move(dpt, curr->ent.d_name), ncurses_raise_error);
-	free(panel->path);
-	panel->path = dpt_string(dpt, NULL);
 	panel->position = 0;
 	panel->top_elem = 0;
 
-	// перечитаем позже
-	// нет, сейчас
-	reread_files(panel);
-
-	// ищем каталог из которого вышли, если вышли
-	if(strcmp(prev_sel.ent.d_name, "..") == 0) {
-		dcl = &panel->contents;
-
-		pos = 0;
-		cursor = NULL; // WARNING: обязательно обнулять курсор при обходе!
-		while(true) {
-			curr = dcl_next_r(dcl, &cursor);
-			if(curr == NULL)
-				break;
-			if(strcmp(curr->ent.d_name, prev_copy.ent.d_name) == 0) {
+	// save prev position maybe?
+	if(strcmp(path, "..") == 0) {
+		 // up
+		DIRCONT_LIST_ENTRY *cursor = NULL;
+		DIRCONT_ENTRY *cur;
+		size_t pos = 0;
+		while ((cur = dcl_next_r(&panel->contents, &cursor)) != NULL) {
+			if(strcmp(cur->ent.d_name, prev.d_name) == 0) {
 				panel->position = pos;
-				break; // gotcha
+				break;
 			}
-			pos++;
+			++pos;
 		}
+		panel->top_elem = ((panel->position + 5) > (panel->height - PANEL_SPEC_LINES))
+			? ((panel->position + 5) - (panel->height - PANEL_SPEC_LINES))
+			: 0;
 	}
 
-	// на случай, если в каталог не получилось зайти, нужно обновить строку
-	free(panel->path);
-	panel->path = dpt_string(dpt, NULL);
-
-	// а вот перерисуем позже
 	panel->redraw = true;
+	return true;
+}
+
+bool fs_exec(BCPANEL *panel, const char *filename) {
+	return false;
+}
+
+bool fs_action(BCPANEL *panel, fs_action_e action) {
+	DIRCONT *dcl = &panel->contents;
+	// смотрим, в какую по списку папку нужно перейти
+	DIRCONT_ENTRY curr = *dcl_at(dcl, panel->position); // создать КОПИЮ
+
+	switch(action) {
+		case FS_ACTION_ENTER: {
+			// 
+			if(curr.st.st_mode & __S_IFDIR)
+				return fs_chdir(panel, curr.ent.d_name);
+			if(curr.st.st_mode & __S_IFREG && curr.st.st_mode & __S_IEXEC)
+				return fs_exec(panel, curr.ent.d_name);
+
+			// we can do nothing
+			return false;
+		}
+
+		case FS_ACTION_EDIT: {
+			// 
+			//if(curr->st.st_mode & __S_IFREG && curr->st.st_mode & __S_IWRITE)
+			//	return fs_edit(panel, curr->ent.d_name);
+
+			// we can do nothing on other types
+			return false;
+		}
+
+		default: return false; // unknown action
+	}
 }
 
 void switch_tabs(BCPANEL *left, BCPANEL *right, BCPANEL **curr) {
@@ -334,6 +346,8 @@ void switch_tabs(BCPANEL *left, BCPANEL *right, BCPANEL **curr) {
 	curr_ptr = *curr;
 	curr_ptr->active = true;
 	curr_ptr->redraw = true;
+
+	chdir(curr_ptr->path);
 }
 
 void redraw_panel(BCPANEL *panel) {
@@ -381,7 +395,6 @@ int main(int argc, char **argv) {
 
 	freopen("logfile.log", "w", stderr);
 
-	WINDOW *left, *right;
 	WINDOW *menubar, *hintbar, *shellbar, *fnkeybar;
 
 	BCPANEL pleft = { .active = true }, pright = { .active = false };
@@ -418,8 +431,11 @@ int main(int argc, char **argv) {
 	getcwd(path_str, PATH_MAX);
 	init_panel(&pleft, rows_panel, cols - cols_panel, 1, 0, path_str); // мб шире
 	init_panel(&pright, rows_panel, cols_panel, 1, cols - cols_panel, getenv("HOME"));
-	left = pleft.curs_win;
-	right = pright.curs_win;
+	reread_files(&pright);
+	reread_files(&pleft); // left is active by default
+
+	WINDOW *left = pleft.curs_win;
+	WINDOW *right = pright.curs_win;
 
 	// create auxillary windows
 	nassert(menubar = newwin(1, cols, 0, 0));
@@ -576,7 +592,7 @@ int main(int argc, char **argv) {
 
 			case RAW_KEY_ENTER:
 			case RAW_KEY_NUMPAD_ENTER: // enter
-				fs_move(pcurr);
+				fs_action(pcurr, FS_ACTION_ENTER);
 				shellbar->_clear = true;
 				break;
 
@@ -589,7 +605,7 @@ int main(int argc, char **argv) {
 					shellbar->_clear = true;
 				}
 				else {
-					snprintf(hint_str, sizeof(hint_str), "pressed key is 0x%lx", raw_key);
+					snprintf(hint_str, sizeof(hint_str) - 1, "pressed key is 0x%lx", raw_key);
 					hintbar->_clear = true;
 				}
 				break;

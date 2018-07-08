@@ -36,7 +36,6 @@ void dcl_init(DIRCONT *dcl);
 DIRCONT *dcl_create();
 bool dcl_push_back(DIRCONT *dcl, DIRCONT_ENTRY *entry);
 void dcl_clear(DIRCONT *dcl);
-//DIRCONT_LIST_ENTRY *dcl_next(DIRCONT *dcl);
 DIRCONT_ENTRY *dcl_next_r(DIRCONT *dcl, DIRCONT_LIST_ENTRY **cur);
 DIRCONT_ENTRY *dcl_at(DIRCONT *dcl, size_t index);
 

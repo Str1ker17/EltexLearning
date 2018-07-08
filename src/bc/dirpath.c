@@ -4,7 +4,7 @@
 #include <linux/limits.h>
 #include "dirpath.h"
 
-bool dpt_move(DIRPATH *dpt, char *subdir) {
+bool dpt_move(DIRPATH *dpt, const char *subdir) {
 	if(strcmp(subdir, ".") == 0)
 		return true; // already there
 	if(strcmp(subdir, "..") == 0) {
@@ -37,6 +37,7 @@ bool dpt_up(DIRPATH *dpt) {
 	return true;
 }
 
+// buf have to be at least 4096 bytes long
 char *dpt_string(DIRPATH *dpt, char *buf) {
 	if(buf == NULL) {
 		buf = (char*)malloc(PATH_MAX);
@@ -60,7 +61,7 @@ char *dpt_string(DIRPATH *dpt, char *buf) {
 	return buf;
 }
 
-void dpt_init(DIRPATH *dpt, char *path) {
+void dpt_init(DIRPATH *dpt, const char *path) {
 	dcl_init(dpt); // initialize from garbage
 	char pth[PATH_MAX];
 	strncpy(pth, path, PATH_MAX - 1);
@@ -79,7 +80,7 @@ void dpt_init(DIRPATH *dpt, char *path) {
 	}
 }
 
-DIRPATH *dpt_create(char *path) {
+DIRPATH *dpt_create(const char *path) {
 	DIRPATH *dpt = dcl_create();
 	if(dpt == NULL)
 		return NULL;
