@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
 	nassert(keypad(stdscr, true));
 
 	struct sigaction sga = {
-		  .sa_mask = 0
+		  .sa_mask = { .__val = { 0 } }
 		, .sa_flags = 0
 		, .sa_restorer = (void(*)(void))NULL
 		, .sa_handler = signal_winch_handler
@@ -259,7 +259,7 @@ int main(int argc, char **argv) {
 	// starting dry read
 	size_t left_char_prev;
 	size_t lines_total = dry_read(&scrbuf);
-	logprint("[i] dry_read processed %lu lines\n", lines_total);
+	logprint("[i] dry_read processed %zu lines\n", lines_total);
 
 	read_wet_from(&scrbuf, 0, scrbuf.rows);
 	int64_t key = 0;

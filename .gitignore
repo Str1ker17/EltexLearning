@@ -2,4 +2,7 @@ bin
 lib
 obj
 *.o
+*.a
+*.so
 *.exe
+*logfile.log

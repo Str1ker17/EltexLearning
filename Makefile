@@ -7,7 +7,7 @@ endif
 
 LD := $(CC)
 
-CFLAGS := -Wall -O3 -march=native
+CFLAGS := -Wall -Wno-unused-parameter
 LDFLAGS := -lncursesw
 
 # := is an immediate expansion, = is a delayed expansion
@@ -15,13 +15,13 @@ COMPILE = $(CFLAGS) -c
 LINK = $(LDFLAGS)
 
 # BUILD CONFIGURATIONS
-debug: CFLAGS := -Wextra -O0 -ggdb -ffunction-sections -D DEBUG=1 -D _DEBUG=1
-debug: solution
-	echo Built Debug
-	
-release: CFLAGS := -Wextra -Wpedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1
+release: CFLAGS := -Wextra -Wpedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
 release: solution
 	echo Built Release
+
+debug: CFLAGS := -Wextra -O0 -ggdb -ffunction-sections -D DEBUG=1 -D _DEBUG=1 $(CFLAGS)
+debug: solution
+	echo Built Debug
 
 # TARGETS
 solution: subdirs libncurses_util bc be

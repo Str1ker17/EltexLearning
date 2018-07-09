@@ -73,6 +73,8 @@ typedef enum {
 void signal_winch_handler(int signo) {
 	struct winsize size;
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, (char*)&size);
+	if(size.ws_row < 5)
+		return; // do not resize is less than
 	nassert(resizeterm(size.ws_row, size.ws_col));
 }
 
@@ -605,7 +607,7 @@ int main(int argc, char **argv) {
 					shellbar->_clear = true;
 				}
 				else {
-					snprintf(hint_str, sizeof(hint_str) - 1, "pressed key is 0x%lx", raw_key);
+					snprintf(hint_str, sizeof(hint_str) - 1, "pressed key is 0x%llu", raw_key);
 					hintbar->_clear = true;
 				}
 				break;

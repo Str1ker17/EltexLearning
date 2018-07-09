@@ -26,5 +26,6 @@ $(OBJECTS): $(HEADERS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
+#	include $(LIBPATH)/Makefile
 	rm -f ./*.exe
 	rm -f ./*.o

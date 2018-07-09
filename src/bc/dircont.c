@@ -109,11 +109,13 @@ void dcl_quick_sort_core(DIRCONT_LIST_ENTRY *head, DIRCONT_LIST_ENTRY *tail, ssi
 		while(l_entry != NULL && cmpr(&l_entry->value, &m) < 0) { l_entry = l_entry->next; l_idx++; }
 		while(r_entry != NULL && cmpr(&r_entry->value, &m) > 0) { r_entry = r_entry->prev; r_idx--; }
 		
-		if(l_idx <= r_idx) {
+		if(l_idx <= r_idx) { // don't copy self
 			// FIXME: rebind links maybe?
-			DIRCONT_ENTRY tmp = l_entry->value;
-			l_entry->value = r_entry->value;
-			r_entry->value = tmp;
+			if(l_idx != r_idx) {
+				DIRCONT_ENTRY tmp = l_entry->value;
+				l_entry->value = r_entry->value;
+				r_entry->value = tmp;
+			}
 
 			// taking ->next after swap!
 			l_entry = l_entry->next; l_idx++;
