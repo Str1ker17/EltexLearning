@@ -39,11 +39,11 @@ bool dpt_up(DIRPATH *dpt) {
 
 // buf have to be at least 4096 bytes long
 char *dpt_string(DIRPATH *dpt, char *buf) {
-	if(buf == NULL) {
-		buf = (char*)malloc(PATH_MAX);
-		if(buf == NULL)
-			return NULL;
-	}
+	//if(buf == NULL) {
+	//	buf = (char*)malloc(PATH_MAX);
+	//	if(buf == NULL)
+	//		return NULL;
+	//}
 	char *ptr = buf;
 
 	int depth = 0;

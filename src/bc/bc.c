@@ -25,12 +25,16 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <netinet/in.h>
 
 #include "dircont.h"
 #include "dirpath.h"
 #include "../libncurses_util/ncurses_util.h"
+#include "../libncurses_util/linux_util.h"
 
 // количество строк, зарезервированных под что-то, кроме списка файлов
 #define PANEL_SPEC_LINES 3
@@ -55,6 +59,13 @@ typedef enum {
 	, CPAIR_PANEL_TITLE
 	, CPAIR_HIGHLIGHT
 	, CPAIR_EXECUTABLE
+	, CPAIR_TYPE_DIR = CPAIR_PANEL
+	, CPAIR_TYPE_REG = CPAIR_PANEL
+	, CPAIR_TYPE_SYMLINK = CPAIR_EXECUTABLE + 1
+	, CPAIR_TYPE_CHR
+	, CPAIR_TYPE_BLK
+	, CPAIR_TYPE_FIFO
+	, CPAIR_TYPE_SOCKET
 } cpair_list;
 
 typedef enum {
@@ -101,6 +112,25 @@ void free_panel(BCPANEL *panel) {
 	free(panel->path);
 }
 
+void enter_curses_mode() {
+	nassert(initscr());
+	//nassert(cbreak());
+	nassert(raw());
+	nassert(noecho());
+	nassert(intrflush(stdscr, false));
+	nassert(keypad(stdscr, true));
+}
+
+void leave_curses_mode() {
+	nassert(endwin());
+}
+
+void invalidate_screen(WINDOW **wnd_arr) {
+	for(int i = 0; i < 6; i++) {
+		wnd_arr[i]->_clear = true;
+	}
+}
+
 bool resize_screen(WINDOW **wnd_arr, int rows, int cols, int *rows_panel, int *cols_panel, int *cl_y) {
 	// DONE: temporarily block SIGWINCH maybe? no, cuz we do nothing with stdscr there
 	if(rows < 5)
@@ -128,12 +158,7 @@ bool resize_screen(WINDOW **wnd_arr, int rows, int cols, int *rows_panel, int *c
 	nassert(wresize(fnkey_bar, 1, cols));
 	nassert(mvwin(fnkey_bar, max(1, rows - 1), 0));
 
-	left_panel->_clear = true;
-	right_panel->_clear = true;
-	menu_bar->_clear = true;
-	hint_bar->_clear = true;
-	shell_bar->_clear = true;
-	fnkey_bar->_clear = true;
+	invalidate_screen(wnd_arr);
 
 	*rows_panel = _rows_panel;
 	*cols_panel = _cols_panel;
@@ -141,14 +166,16 @@ bool resize_screen(WINDOW **wnd_arr, int rows, int cols, int *rows_panel, int *c
 	return true;
 }
 
+#define is_some_dir(fl) ((((fl) & __S_IFMT) == __S_IFDIR) || (((fl) & __S_IFDIR) && ((fl) & __S_IFLNK)))
+
 int fs_comparator(DIRCONT_ENTRY *left, DIRCONT_ENTRY *right) {
 	// .. first
 	if(strcmp(left->ent.d_name, "..") == 0) return -1;
 	if(strcmp(right->ent.d_name, "..") == 0) return 1;
 
 	// directories first
-	if((left->st.st_mode & __S_IFDIR) && !(right->st.st_mode & __S_IFDIR)) return -1;
-	if(!(left->st.st_mode & __S_IFDIR) && (right->st.st_mode & __S_IFDIR)) return 1;
+	if(is_some_dir(left->st.st_mode) && !is_some_dir(right->st.st_mode)) return -1;
+	if(!is_some_dir(left->st.st_mode) && is_some_dir(right->st.st_mode)) return 1;
 
 	// sort directories and files alphabetically
 	return strcmp(left->ent.d_name, right->ent.d_name);
@@ -180,7 +207,7 @@ int vscroll(BCPANEL *panel, int lines) {
 
 bool reread_files(BCPANEL *panel) {
 	struct stat st = { .st_ino = 0 };
-	stat(panel->path, &st); // TODO: check for error
+	__syscall(stat(panel->path, &st)); // TODO: check for error
 	if(st.st_ino == panel->contents.ino_self)
 		return true; // already there
 
@@ -190,7 +217,7 @@ bool reread_files(BCPANEL *panel) {
 		return false;
 	
 	dcl_clear(&panel->contents);
-	chdir(panel->path);
+	__syscall(chdir(panel->path));
 
 	while(true) {
 		struct dirent *entry = readdir(dir);
@@ -205,11 +232,11 @@ bool reread_files(BCPANEL *panel) {
 		}
 
 		DIRCONT_ENTRY ent = { .ent = *entry };
-		custom_assert(stat(entry->d_name, &ent.st) == 0, ncurses_raise_error);
-		custom_assert(dcl_push_back(&panel->contents, &ent), ncurses_raise_error);
+		__syscall(stat(entry->d_name, &ent.st));
+		lassert(dcl_push_back(&panel->contents, &ent));
 	}
 
-	closedir(dir);
+	__syscall(closedir(dir)); // skip return value?
 	panel->contents.ino_self = st.st_ino;
 
 	dcl_quick_sort(&panel->contents, &fs_comparator);
@@ -233,17 +260,43 @@ void print_files(BCPANEL *panel) {
 			continue;
 		}
 
-		// tune item look
+		// tune item look. default is __S_IFREG
 		char spec = ' ';
 		chtype attr = A_NORMAL;
-		int cpair = CPAIR_PANEL;
+		int cpair = CPAIR_TYPE_REG;
+
+		// from sys/stat.h:
+		// /* File types.  */
+		// #define	__S_IFDIR	0040000	/* Directory.  */
+		// #define	__S_IFCHR	0020000	/* Character device.  */
+		// #define	__S_IFBLK	0060000	/* Block device.  */
+		// #define	__S_IFREG	0100000	/* Regular file.  */
+		// #define	__S_IFIFO	0010000	/* FIFO.  */
+		// #define	__S_IFLNK	0120000	/* Symbolic link.  */
+		// #define	__S_IFSOCK	0140000	/* Socket.  */
 
 		__mode_t st_mode = curr->st.st_mode;
-		if(st_mode & __S_IFDIR) { spec = '/'; attr = A_BOLD; }
-		else if(st_mode & __S_IEXEC) { spec = '*'; attr = A_BOLD; }
+		__mode_t st_type = st_mode & __S_IFMT;
+
+		if ((st_mode & __S_IFREG) && (st_mode & __S_IEXEC)) {
+			spec = '*'; attr = A_BOLD; cpair = CPAIR_EXECUTABLE;
+		}
+
+		switch(st_type) {
+			case __S_IFLNK:  { spec = '@'; cpair = CPAIR_TYPE_SYMLINK; } break;
+			case __S_IFSOCK: { spec = '='; cpair = CPAIR_TYPE_SOCKET; } break;
+			case __S_IFDIR:  { spec = '/'; cpair = CPAIR_TYPE_DIR; attr = A_BOLD; } break;
+			case __S_IFBLK:  { spec = '+'; cpair = CPAIR_TYPE_BLK; attr = A_BOLD; } break;
+			case __S_IFCHR:  { spec = '-'; cpair = CPAIR_TYPE_CHR; attr = A_BOLD; } break;
+			case __S_IFIFO:  { spec = '|'; cpair = CPAIR_TYPE_FIFO; } break;
+			default: {
+				if(st_type != __S_IFREG)
+					logprint("[!] Type of file '%s' is not S_IFREG: %08x\n"
+						, curr->ent.d_name, htonl(st_type));
+			}
+		}
 
 		if (panel->active && panel->position == pos) cpair = CPAIR_HIGHLIGHT;
-		else if(!(st_mode & __S_IFDIR) && (st_mode & __S_IEXEC)) cpair = CPAIR_EXECUTABLE;
 
 		// actually draw
 		if (cpair != CPAIR_PANEL)
@@ -257,6 +310,7 @@ void print_files(BCPANEL *panel) {
 
 		if(status == ERR)
 			break; // вывели всё
+
 		++pos;
 		++pos_scr;
 	}
@@ -269,16 +323,13 @@ bool fs_chdir(BCPANEL *panel, char *path) {
 	struct dirent prev = { .d_name = "\0" };
 	char tmp[4096] = "\0";
 	strcpy(tmp, path);
-	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
 	if(panel->dpath.tail != NULL)
 		strcpy(prev.d_name, panel->dpath.tail->value.ent.d_name);
-	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
-	custom_assert(dpt_move(&panel->dpath, path), ncurses_raise_error);
-	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
+
+	lassert(dpt_move(&panel->dpath, path));
 	dpt_string(&panel->dpath, panel->path);
-	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
-	custom_assert(reread_files(panel), ncurses_raise_error);
-	custom_assert(strcmp(tmp, path) == 0, ncurses_raise_error);
+
+	lassert(reread_files(panel));
 
 	panel->position = 0;
 	panel->top_elem = 0;
@@ -296,6 +347,7 @@ bool fs_chdir(BCPANEL *panel, char *path) {
 			}
 			++pos;
 		}
+		// TODO: improve to disable up-scrolling
 		panel->top_elem = ((panel->position + 5) > (panel->height - PANEL_SPEC_LINES))
 			? ((panel->position + 5) - (panel->height - PANEL_SPEC_LINES))
 			: 0;
@@ -306,7 +358,43 @@ bool fs_chdir(BCPANEL *panel, char *path) {
 }
 
 bool fs_exec(BCPANEL *panel, const char *filename) {
-	return false;
+	bool ret = true;
+	leave_curses_mode();
+
+	pid_t pid;
+	int stat_loc;
+	char exec_name[NAME_MAX + 2 + 1] = "./";
+	strcpy(exec_name + 2, filename);
+
+	switch(pid = fork()) {
+		case -1: {
+			syscall_print_error("fork() failed", __FILE__, __LINE__, errno);
+			ret = false;
+		} break;
+
+		case 0: { // child
+			lassert(dup2(STDOUT_FILENO, STDERR_FILENO) != -1);
+			if(execl(exec_name, exec_name, NULL) == -1) {
+				syscall_print_error("execl() failed", __FILE__, __LINE__, errno);
+				exit(EXIT_FAILURE);
+			}
+		} break;
+
+		default: { // parent, actions performed on successful fork()
+			lassert(waitpid(pid, &stat_loc, 0) != -1);
+			int ret_code = (stat_loc >> 8) & 0xff;
+			if (ret_code == 0) printf(ANSI_BACKGROUND_GREEN);
+			else printf(ANSI_BACKGROUND_RED);
+			printf(ANSI_COLOR_WHITE "%s" ANSI_COLOR_RESET ": Process exited with code %d\n"
+				, exec_name, ret_code);
+		} break;
+	}
+
+	printf("Press any key to continue... ");
+	getchar();
+
+	enter_curses_mode();
+	return ret;
 }
 
 bool fs_action(BCPANEL *panel, fs_action_e action) {
@@ -316,18 +404,16 @@ bool fs_action(BCPANEL *panel, fs_action_e action) {
 
 	switch(action) {
 		case FS_ACTION_ENTER: {
-			// 
-			if(curr.st.st_mode & __S_IFDIR)
+			if(is_some_dir(curr.st.st_mode))
 				return fs_chdir(panel, curr.ent.d_name);
 			if(curr.st.st_mode & __S_IFREG && curr.st.st_mode & __S_IEXEC)
 				return fs_exec(panel, curr.ent.d_name);
 
-			// we can do nothing
+			// we can do nothing on other types
 			return false;
 		}
 
 		case FS_ACTION_EDIT: {
-			// 
 			//if(curr->st.st_mode & __S_IFREG && curr->st.st_mode & __S_IWRITE)
 			//	return fs_edit(panel, curr->ent.d_name);
 
@@ -409,15 +495,10 @@ int main(int argc, char **argv) {
 	char path_str[PATH_MAX] = "\0";
 
 	// https://code-live.ru/post/cpp-ncurses-hello-world
-	nassert(initscr());
-	nassert(cbreak());
-	//nassert(raw());
-	nassert(noecho());
-	nassert(intrflush(stdscr, false));
-	nassert(keypad(stdscr, true));
+	enter_curses_mode();
 
 	getmaxyx(stdscr, rows, cols);
-	custom_assert(rows >= 5, ncurses_raise_error);
+	lassert(rows >= 5);
 
 	int cols_panel = cols / 2;
 	int rows_panel = rows - 4; // заголовок и 3 строчки снизу
@@ -428,6 +509,12 @@ int main(int argc, char **argv) {
 	nassert(init_pair(CPAIR_PANEL_TITLE, COLOR_BLACK, COLOR_WHITE)); // panel title
 	nassert(init_pair(CPAIR_HIGHLIGHT, COLOR_BLACK, COLOR_CYAN)); // file cursos highlight
 	nassert(init_pair(CPAIR_EXECUTABLE, COLOR_GREEN, COLOR_BLUE)); // executable file
+
+	nassert(init_pair(CPAIR_TYPE_SYMLINK, COLOR_WHITE, COLOR_BLUE)); // symlink
+	nassert(init_pair(CPAIR_TYPE_CHR, COLOR_MAGENTA, COLOR_BLUE)); // char file
+	nassert(init_pair(CPAIR_TYPE_BLK, COLOR_MAGENTA, COLOR_BLUE)); // block file
+	nassert(init_pair(CPAIR_TYPE_FIFO, COLOR_BLACK, COLOR_BLUE)); // named pipe
+	nassert(init_pair(CPAIR_TYPE_SOCKET, COLOR_BLACK, COLOR_BLUE)); // socket
 
 	// create panels
 	getcwd(path_str, PATH_MAX);
@@ -490,8 +577,8 @@ int main(int argc, char **argv) {
 		if(shellbar->_clear) {
 			shellbar->_clear = false;
 			nassert(werase(shellbar));
-			cl_x = snprintf(shell_str, sizeof(shell_str)
-				, "[nosh %.29s]$ ", pcurr->dpath.tail ? pcurr->dpath.tail->value.ent.d_name : "/");
+			cl_x = snprintf(shell_str, sizeof(shell_str), "[nosh %.*s]$ "
+				, (int)pcurr->width, pcurr->dpath.tail ? pcurr->dpath.tail->value.ent.d_name : "/");
 			mvwaddstr(shellbar, 0, 0, shell_str);
 			if(single_c != 0)
 				mvwaddch(shellbar, 0, cl_x, single_c);
@@ -551,7 +638,6 @@ int main(int argc, char **argv) {
 
 		switch (raw_key) {
 			case KEY_UP:
-				//pcurr->position = max(0, pcurr->position - 1);
 				if(pcurr->position > 0) {
 					if(pcurr->top_elem == pcurr->position) {
 						vscroll(pcurr, -1);
@@ -562,9 +648,8 @@ int main(int argc, char **argv) {
 				break;
 
 			case KEY_DOWN:
-				//pcurr->position = min(pcurr->contents.count - 1, pcurr->position + 1);
 				if(pcurr->position < pcurr->contents.count - 1) {
-					if(pcurr->top_elem + (pcurr->height - 3) - 1 == pcurr->position) {
+					if(pcurr->top_elem + (pcurr->height - PANEL_SPEC_LINES) - 1 == pcurr->position) {
 						vscroll(pcurr, 1);
 					}
 					++(pcurr->position);
@@ -607,7 +692,7 @@ int main(int argc, char **argv) {
 					shellbar->_clear = true;
 				}
 				else {
-					snprintf(hint_str, sizeof(hint_str) - 1, "pressed key is 0x%llu", raw_key);
+					snprintf(hint_str, sizeof(hint_str) - 1, "pressed key is 0x%lx", raw_key);
 					hintbar->_clear = true;
 				}
 				break;
@@ -615,7 +700,7 @@ int main(int argc, char **argv) {
 	}
 
 end_loop:
-	nassert(endwin());
+	leave_curses_mode();
 
 	free_panel(&pleft);
 	free_panel(&pright);
