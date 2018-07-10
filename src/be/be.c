@@ -30,6 +30,9 @@ int main(int argc, char **argv) {
 
 	int fd = open(name, O_WRONLY);
 	lassert(dup2(fd, STDERR_FILENO) == STDERR_FILENO);
+#else
+	int fd = open("/dev/null", O_WRONLY);
+	lassert(dup2(fd, STDERR_FILENO) == STDERR_FILENO);
 #endif
 
 	return editor_main(argc, argv);

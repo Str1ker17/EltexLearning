@@ -175,14 +175,16 @@ int editor_main(int argc, char **argv) {
 	}
 
 	FILE *f = fopen(argv[1], "r+"); // NEVER USE "rw+"!!!
-	lassert(f != NULL);
+	if(!f) {
+		printl("[x] Could not open file '%s'\n", argv[1]);
+	}
 	int fd = fileno(f);
 
 	struct stat st;
 	fstat(fd, &st);
 
 	if(st.st_size > 128 * 1024 * 1024) {
-		printl("[x] File is larger than 128 MB; try another editor\n");
+		printl("[x] File '%s' is larger than 128 MB; try another editor\n", argv[1]);
 	}
 
 	// file opened, enter curses mode

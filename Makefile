@@ -55,7 +55,7 @@ bin/bc.exe: lib/libncurses_util.a src/bc/bc.c src/bc/dircont.h src/bc/dircont.c 
 
 bin/be.exe: lib/libncurses_util.a lib/libeditor.a src/be/be.c
 	$(CC) -o obj/be.o src/be/be.c $(COMPILE)
-	$(LD) -o bin/be.exe obj/be.o $(LINK) lib/libeditor.a lib/libncurses_util.a
+	$(LD) -o bin/be.exe obj/be.o lib/libeditor.a lib/libncurses_util.a $(LINK)
 
 clean:
 	rm -rf bin
