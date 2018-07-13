@@ -1,5 +1,3 @@
-#include "libeditor.h"
-
 /*
  * Bionicle Editor (Library) v0.2
  * @Author: Str1ker
@@ -16,7 +14,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <string.h>
+//#include <string.h>
 #include <ctype.h>
 
 #include <ncursesw/ncurses.h>
@@ -31,9 +29,10 @@
 // reuse code
 #include "../libncurses_util/ncurses_util.h"
 #include "../libncurses_util/linux_util.h"
+#include "editor.h"
 
 #define printl(...) { endwin(); printf(__VA_ARGS__); exit(EXIT_FAILURE); }
-#define debug_cur(x,y) fprintf(stderr, "Cursor at row=%d col=%d\n", y, x)
+#define debug_cur(x,y) fprintf(stderr, "at row=%d col=%d", y, x)
 
 void signal_winch_handler(int signo) {
 	struct winsize size;
@@ -189,14 +188,17 @@ int editor_main(int argc, char **argv) {
 
 	// file opened, enter curses mode
 	nassert(initscr());
-	//nassert(cbreak());
-	nassert(raw());
+	nassert(cbreak());
+	//nassert(raw());
 	nassert(noecho());
 	nassert(keypad(stdscr, true));
 
+	sigset_t set;
+	__syscall(sigfillset(&set));
+	//__syscall(sigdelset(&set, SIGWINCH));
 	struct sigaction sga = {
-		  .sa_mask = { .__val = { 0 } }
-		, .sa_flags = 0
+		  .sa_mask = set
+		, .sa_flags = SA_RESTART
 		, .sa_restorer = (void(*)(void))NULL
 		, .sa_handler = signal_winch_handler
 	};
@@ -297,31 +299,27 @@ move_cursor:
 		// handle action
 		int vscrolled;
 		key = raw_wgetch(stdscr);
+		//fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 		switch(key) {
 			case KEY_UP:
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				scrbuf.left_char = 0;
 				--cur_y;
 				if(cur_y < 0) {
 					vscroll(&scrbuf, cur_y);
 					cur_y = 0;
 				}
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case KEY_DOWN:
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				scrbuf.left_char = 0;
 				++cur_y;
 				if(cur_y > rows - 1) {
 					vscroll(&scrbuf, cur_y - (rows - 1));
 					cur_y = rows - 1;
 				}
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case KEY_LEFT:
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				cur_x = max(0, cur_x - 1);
 				/*if(cur_x == 0) {
 					if(scrbuf.left_char > 0) {
@@ -332,11 +330,9 @@ move_cursor:
 				else {
 					--cur_x;
 				}*/
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case KEY_RIGHT:
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				cur_x = min(cols - 1, cur_x + 1);
 				/*if(cur_x == cols - 1) { // scroll right
 					if(scrbuf.left_char < scrbuf.scr_lines[cur_y].visible_len - cols) {
@@ -347,42 +343,33 @@ move_cursor:
 				else if((ssize_t)(scrbuf.scr_lines[cur_y].visible_len - scrbuf.left_char) > cur_x - 1) {
 					++cur_x;
 				}*/
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case RAW_KEY_HOME:
 			case RAW_KEY_HOME_ALT:
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				if(scrbuf.left_char > 0) scrbuf.redraw = true;
 				scrbuf.left_char = 0;
 				cur_x = 0;
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case RAW_KEY_END:
 			case RAW_KEY_END_ALT:
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				left_char_prev = scrbuf.left_char;
 				scrbuf.left_char = max(0, ((ssize_t)scrbuf.scr_lines[cur_y].visible_len) - cols);
 				cur_x = min(((ssize_t)scrbuf.scr_lines[cur_y].visible_len) - cols, cols - 1);
 				if(left_char_prev != scrbuf.left_char) scrbuf.redraw = true;
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case RAW_KEY_PAGE_DOWN: // PAGE DOWN
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				scrbuf.left_char = 0;
 				vscrolled = vscroll(&scrbuf, rows - 1);
 				cur_y = min(rows - 1, cur_y + (rows - 1) - vscrolled);
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case RAW_KEY_PAGE_UP: // PAGE UP
-				fprintf(stderr, "Before: "); debug_cur(cur_x, cur_y);
 				scrbuf.left_char = 0;
 				vscrolled = vscroll(&scrbuf, -(rows - 1));
 				cur_y = max(0, cur_y - ((rows - 1) - -vscrolled));
-				fprintf(stderr, "After:  "); debug_cur(cur_x, cur_y);
 				break;
 
 			case KEY_F(10):
@@ -401,6 +388,11 @@ move_cursor:
 				}
 				break;
 		}
+		fprintf(stderr, ANSI_COLOR_GREEN "Cur: " ANSI_COLOR_RESET); 
+			debug_cur(cur_x, cur_y);
+		fprintf(stderr, ANSI_COLOR_CYAN  "\tPos: " ANSI_COLOR_RESET); 
+			debug_cur((int)scrbuf.left_char, (int)scrbuf.top_line);
+		fprintf(stderr, "\n");
 	}
 
 end_loop:

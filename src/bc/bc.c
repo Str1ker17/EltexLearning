@@ -1,8 +1,8 @@
 /*
- * Bionicle Commander v0.1.1
+ * Bionicle Commander v0.1.2
  * @Author: Str1ker
  * @Created: 28 Jun 2018
- * @Modified: 9 Jul 2018
+ * @Modified: 11 Jul 2018
  */
 
 #if defined(_MSC_VER)
@@ -20,11 +20,11 @@
 #include <ncursesw/ncurses.h>
 #include <locale.h>
 
+#include <signal.h>
 #include <linux/limits.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -166,16 +166,14 @@ bool resize_screen(WINDOW **wnd_arr, int rows, int cols, int *rows_panel, int *c
 	return true;
 }
 
-#define is_some_dir(fl) ((((fl) & __S_IFMT) == __S_IFDIR) || (((fl) & __S_IFDIR) && ((fl) & __S_IFLNK)))
-
 int fs_comparator(DIRCONT_ENTRY *left, DIRCONT_ENTRY *right) {
 	// .. first
 	if(strcmp(left->ent.d_name, "..") == 0) return -1;
 	if(strcmp(right->ent.d_name, "..") == 0) return 1;
 
 	// directories first
-	if(is_some_dir(left->st.st_mode) && !is_some_dir(right->st.st_mode)) return -1;
-	if(!is_some_dir(left->st.st_mode) && is_some_dir(right->st.st_mode)) return 1;
+	if(S_ISDIR(left->st.st_mode) && !S_ISDIR(right->st.st_mode)) return -1;
+	if(!S_ISDIR(left->st.st_mode) && S_ISDIR(right->st.st_mode)) return 1;
 
 	// sort directories and files alphabetically
 	return strcmp(left->ent.d_name, right->ent.d_name);
@@ -320,16 +318,19 @@ bool fs_chdir(BCPANEL *panel, char *path) {
 	if(chdir(path) == -1)
 		return false;
 
+	char prev_path[4096] = "\0";
+	strcpy(prev_path, panel->path);
 	struct dirent prev = { .d_name = "\0" };
-	char tmp[4096] = "\0";
-	strcpy(tmp, path);
 	if(panel->dpath.tail != NULL)
 		strcpy(prev.d_name, panel->dpath.tail->value.ent.d_name);
 
 	lassert(dpt_move(&panel->dpath, path));
 	dpt_string(&panel->dpath, panel->path);
 
-	lassert(reread_files(panel));
+	if(!reread_files(panel)) {
+		__syscall(chdir(prev_path));
+		return false;
+	}
 
 	panel->position = 0;
 	panel->top_elem = 0;
@@ -404,7 +405,7 @@ bool fs_action(BCPANEL *panel, fs_action_e action) {
 
 	switch(action) {
 		case FS_ACTION_ENTER: {
-			if(is_some_dir(curr.st.st_mode))
+			if(S_ISDIR(curr.st.st_mode))
 				return fs_chdir(panel, curr.ent.d_name);
 			if(curr.st.st_mode & __S_IFREG && curr.st.st_mode & __S_IEXEC)
 				return fs_exec(panel, curr.ent.d_name);
@@ -499,6 +500,17 @@ int main(int argc, char **argv) {
 
 	getmaxyx(stdscr, rows, cols);
 	lassert(rows >= 5);
+
+	sigset_t set;
+	__syscall(sigfillset(&set));
+	//__syscall(sigdelset(&set, SIGWINCH));
+	struct sigaction sga = {
+		  .sa_mask = set
+		, .sa_flags = SA_RESTART
+		, .sa_restorer = (void(*)(void))NULL
+		, .sa_handler = signal_winch_handler
+	};
+	__syscall(sigaction(SIGWINCH, &sga, NULL));
 
 	int cols_panel = cols / 2;
 	int rows_panel = rows - 4; // заголовок и 3 строчки снизу

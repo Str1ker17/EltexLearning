@@ -1,21 +1,27 @@
 .PHONY: clean
 
-#ifeq($(MAKELEVEL),0)
+# твою ж дивизию! определение переменных не требует таба!
+ifeq ($(MAKELEVEL),0)
 CC := gcc
-CFLAGS := -std=c99
-#endif
+OBJDIR := ./
+endif
 
-HEADERS = $(wildcard *.h)
-SOURCES = $(wildcard *.c)
-OBJECTS = $(SOURCES:.c=.o)
+ifeq ($(strip($(OBJDIR))),)
+endif
 
-libncurses_util.a: $(OBJECTS)
-	ar rcs $@ $?
+CFLAGS_LOCAL := -std=c99
+
+HEADERS := $(wildcard *.h)
+SOURCES := $(wildcard *.c)
+OBJECTS := $(SOURCES:.c=.o)
+
+$(LIBDIR)libncurses_util.a: $(OBJECTS)
+	cd $(OBJDIR) && ar rcs $@ $^
 
 $(OBJECTS): $(HEADERS)
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(CFLAGS_LOCAL) -c -o $(OBJDIR)$@ $<
 
 clean:
-	rm -f ./*.a
-	rm -f ./*.o
+	rm -f $(LIBDIR)*.a
+	rm -f $(OBJDIR)*.o

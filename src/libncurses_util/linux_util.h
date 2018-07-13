@@ -28,7 +28,10 @@
 
 // assert
 #define lassert(x) (void)((!!(x)) || syscall_error((#x), __FILE__, __LINE__))
-#define __syscall(x) lassert((x) == 0)
+#define __syscall(x) lassert((x) != -1)
+
+// debug
+#define VERBOSE if(verbose)
 
 // exported functions
 int syscall_error(const char *x, const char *file, const int line);

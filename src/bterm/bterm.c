@@ -5,12 +5,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "../libncurses_util/linux_util.h"
-#include <stdbool.h>
 // Normally, gcc(1) translates calls to alloca() with inlined code.
 // This is not done when either the -ansi, -std=c89, -std=c99, or the
 // -std=c11 option is given AND the header <alloca.h> is not included.

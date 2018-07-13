@@ -1,31 +1,34 @@
-.PHONY: solution clean
+.PHONY: clean
 
-#ifeq($(MAKELEVEL),0)
+# твою ж дивизию! определение переменных не требует таба!
+ifeq ($(MAKELEVEL),0)
 CC := gcc
-CFLAGS := -std=c99
-LDFLAGS := -lcurses
-# "ncursesw panel" => "-lncursesw -lpanel"
-#endif
+LD := $(CC)
+OBJDIR := ./
+endif
 
-HEADERS = $(wildcard *.h)
-SOURCES = $(wildcard *.c)
-OBJECTS = $(SOURCES:.c=.o)
-LIBPATH := ../libncurses_util
-STATIC_LIBRARIES := libncurses_util.a
-#SHARED_LIBRARIES := -lncursesw
+CFLAGS_LOCAL := -std=gnu99
+LDFLAGS_LOCAL := -lncursesw
 
-solution: bc.exe
+ifeq ($(strip($(OBJDIR))),)
+endif
 
-include $(LIBPATH)/Makefile
+ifeq ($(strip($(LIBDIR))),)
+# TODO
+#LDFLAGS_LOCAL := $(wildcard ../*/.)$(LDFLAGS_LOCAL)
+endif
 
-bc.exe: $(OBJECTS) $(STATIC_LIBRARIES)
-	$(CC) -o $@ $(OBJECTS) $(LIBPATH)/$(STATIC_LIBRARIES) $(LDFLAGS)
+HEADERS := $(wildcard *.h)
+SOURCES := $(wildcard *.c)
+OBJECTS := $(SOURCES:.c=.o)
+
+$(BINDIR)bc.exe: $(OBJECTS) $(LIBDIR)libeditor.a $(LIBDIR)libcopyfile.a $(LIBDIR)libncurses_util.a
+	cd $(OBJDIR) && $(LD) -o $@ $^ $(LDFLAGS) $(LDFLAGS_LOCAL)
 
 $(OBJECTS): $(HEADERS)
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(CFLAGS_LOCAL) -c -o $(OBJDIR)$@ $<
 
 clean:
-#	include $(LIBPATH)/Makefile
-	rm -f ./*.exe
-	rm -f ./*.o
+	rm -f $(BINDIR)*.exe
+	rm -f $(OBJDIR)*.o
