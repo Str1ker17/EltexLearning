@@ -2,20 +2,31 @@
 
 # на всякий случай
 ifeq ($(MAKELEVEL),0)
-ROOTDIR := $(shell pwd)/../
-ROOTDIR := $(realpath $(ROOTDIR))
+ROOTDIR := $(realpath $(CURDIR)/../)
 BINDIR := $(ROOTDIR)/bin/
 LIBDIR := $(ROOTDIR)/lib/
 OBJDIR := $(ROOTDIR)/obj/
 SRCDIR := $(ROOTDIR)/src/
 
-CC := gcc
+ifeq ($(strip $(CC)),)
+#CC := gcc
+endif
+
 LD := $(CC)
 endif
 
+# не работает
+#vpath %.h .
+#vpath %.c .
+vpath %.o $(OBJDIR)
+vpath %.a $(LIBDIR)
+
+# работает
+VPATH := $(LIBDIR) $(OBJDIR) $(BINDIR)
+
 export
 
-.PHONY: subdirs projects clean
+.PHONY: subdirs projects clean distclean
 # https://superuser.com/a/593404
 SUBDIRS := $(shell find . -mindepth 1 -maxdepth 1 -type d  \( ! -iname ".*" \) | sed 's|^\./||g')
 .PHONY: $(SUBDIRS)
@@ -31,13 +42,14 @@ bfcopy: libncurses_util libcopyfile
 libeditor: libncurses_util
 libncurses_util:
 
-$(SUBDIRS):
+$(SUBDIRS): subdirs
 	$(MAKE) -$(MAKEFLAGS) -C $@
 
 subdirs:
-	mkdir $(BINDIR) 2> /dev/null || true
-	mkdir $(LIBDIR) 2> /dev/null || true
-	mkdir $(OBJDIR) 2> /dev/null || true
+	echo Compiler is $(CC)
+	@mkdir $(BINDIR) 2> /dev/null || true
+	@mkdir $(LIBDIR) 2> /dev/null || true
+	@mkdir $(OBJDIR) 2> /dev/null || true
 
 clean:
 	rm -rf $(BINDIR)
@@ -45,4 +57,4 @@ clean:
 	rm -rf $(OBJDIR)
 	
 distclean:
-	@$(foreach dir,$(SUBDIRS),$(MAKE) $(MAKEFLAGS) -C $(dir) clean;)
+	@$(foreach dir,$(SUBDIRS),$(MAKE) -$(MAKEFLAGS) -C $(dir) clean;)

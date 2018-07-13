@@ -1,18 +1,25 @@
-.PHONY: solution clean subdirs debug release
+.PHONY: solution clean distclean debug release
 
 # CONFIGURATION
-export CC := gcc
-export LD := $(CC)
-export CFLAGS :=
-export LDFLAGS :=
+ifeq ($(strip $(CC)),)
+CC := gcc
+endif
 
-export ROOTDIR := $(CURDIR)
-export BINDIR := $(ROOTDIR)/bin/
-export LIBDIR := $(ROOTDIR)/lib/
-export OBJDIR := $(ROOTDIR)/obj/
-export SRCDIR := $(ROOTDIR)/src/
+LD := $(CC)
+CFLAGS :=
+LDFLAGS :=
 
-MKFLG := -sr
+ROOTDIR := $(CURDIR)
+BINDIR := $(ROOTDIR)/bin/
+LIBDIR := $(ROOTDIR)/lib/
+OBJDIR := $(ROOTDIR)/obj/
+SRCDIR := $(ROOTDIR)/src/
+
+# save time by omitting `default' targets
+MKFLG := -r
+
+# export ALL variables
+export
 
 # BUILD CONFIGURATIONS
 release: CFLAGS := -Wextra -Wpedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
@@ -24,9 +31,7 @@ debug: solution
 	echo Built Debug
 
 # TARGETS
-solution: projects
-
-projects:
+solution:
 	$(MAKE) $(MKFLG) -C $(SRCDIR) projects
 
 clean:
@@ -34,3 +39,8 @@ clean:
 
 distclean:
 	$(MAKE) $(MKFLG) -C $(SRCDIR) distclean
+
+# last resort target, to redirect all lower level targets
+# https://www.gnu.org/software/make/manual/html_node/Last-Resort.html
+%::
+	$(MAKE) $(MKFLG) -C $(SRCDIR) $@
