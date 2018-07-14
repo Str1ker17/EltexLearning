@@ -15,6 +15,7 @@ void dcl_init(DIRCONT *dcl) {
 	dcl->count = 0;
 }
 
+/* deprecated
 DIRCONT *dcl_create() {
 	DIRCONT *dcl = (DIRCONT*)malloc(sizeof(DIRCONT));
 	if(dcl == NULL)
@@ -22,6 +23,7 @@ DIRCONT *dcl_create() {
 	dcl_init(dcl);
 	return dcl;
 }
+*/
 
 // O(1)
 bool dcl_push_back(DIRCONT *dcl, DIRCONT_ENTRY *entry) {

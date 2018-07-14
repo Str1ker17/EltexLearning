@@ -7,6 +7,7 @@
 
 #if defined(_MSC_VER)
 #undef __cplusplus
+#define __builtin_alloca(size) NULL
 #endif
 
 #include <stdio.h>
@@ -30,6 +31,7 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <netinet/in.h>
+#include <alloca.h>
 
 #include "dircont.h"
 #include "dirpath.h"
@@ -70,7 +72,9 @@ typedef enum {
 
 typedef enum {
 	  FS_ACTION_ENTER = 0 // cd to directory, run executable file, run associated program for others
+	, FS_ACTION_VIEW = 3 // F3
 	, FS_ACTION_EDIT = 4 // F4
+	, FS_ACTION_COPY = 5 // F5
 } fs_action_e;
 
 // creative place
@@ -281,6 +285,7 @@ void print_files(BCPANEL *panel) {
 		}
 
 		switch(st_type) {
+			// S_IFLNK won't work with stat(), only lstat()
 			case __S_IFLNK:  { spec = '@'; cpair = CPAIR_TYPE_SYMLINK; } break;
 			case __S_IFSOCK: { spec = '='; cpair = CPAIR_TYPE_SOCKET; } break;
 			case __S_IFDIR:  { spec = '/'; cpair = CPAIR_TYPE_DIR; attr = A_BOLD; } break;
@@ -349,50 +354,67 @@ bool fs_chdir(BCPANEL *panel, char *path) {
 			++pos;
 		}
 		// TODO: improve to disable up-scrolling
-		panel->top_elem = ((panel->position + 5) > (panel->height - PANEL_SPEC_LINES))
-			? ((panel->position + 5) - (panel->height - PANEL_SPEC_LINES))
-			: 0;
+		ssize_t bot_elem = min(panel->position + 5, panel->contents.count);
+		ssize_t top_elem = max(0, bot_elem - ((((ssize_t)(panel->height)) - PANEL_SPEC_LINES)));
+		panel->top_elem = top_elem;
 	}
 
 	panel->redraw = true;
 	return true;
 }
 
-bool fs_exec(BCPANEL *panel, const char *filename) {
+bool fs_exec(BCPANEL *panel, const char *filename, fs_action_e action) {
 	bool ret = true;
 	leave_curses_mode();
 
 	pid_t pid;
 	int stat_loc;
+	int exec_ret = 0;
+	bool *exec_failure = alloca(sizeof(bool));
 	char exec_name[NAME_MAX + 2 + 1] = "./";
 	strcpy(exec_name + 2, filename);
 
 	switch(pid = fork()) {
 		case -1: {
+			*exec_failure = true;
 			syscall_print_error("fork() failed", __FILE__, __LINE__, errno);
 			ret = false;
 		} break;
 
 		case 0: { // child
-			lassert(dup2(STDOUT_FILENO, STDERR_FILENO) != -1);
-			if(execl(exec_name, exec_name, NULL) == -1) {
-				syscall_print_error("execl() failed", __FILE__, __LINE__, errno);
-				exit(EXIT_FAILURE);
+			lassert(dup2(STDOUT_FILENO, STDERR_FILENO) == STDERR_FILENO);
+
+			switch(action) {
+				case FS_ACTION_ENTER: exec_ret = execl(exec_name, exec_name, NULL); break;
+				case FS_ACTION_VIEW: exec_ret = execlp("less", "less", exec_name, NULL); break;
+				case FS_ACTION_EDIT: exec_ret = execlp("nano", "nano", exec_name, NULL); break;
+				default: printf("Wrong action!\n"); *exec_failure = true; break;
 			}
+
+			if(exec_ret == -1) {
+				*exec_failure = true;
+				syscall_print_error("execl() failed", __FILE__, __LINE__, errno);
+			}
+			// unconditional exit
+			exit(EXIT_FAILURE);
 		} break;
 
 		default: { // parent, actions performed on successful fork()
 			lassert(waitpid(pid, &stat_loc, 0) != -1);
-			int ret_code = (stat_loc >> 8) & 0xff;
-			if (ret_code == 0) printf(ANSI_BACKGROUND_GREEN);
-			else printf(ANSI_BACKGROUND_RED);
-			printf(ANSI_COLOR_WHITE "%s" ANSI_COLOR_RESET ": Process exited with code %d\n"
-				, exec_name, ret_code);
+			if(action == FS_ACTION_ENTER) {
+				int ret_code = (stat_loc >> 8) & 0xff;
+				if (ret_code == 0) printf(ANSI_BACKGROUND_GREEN);
+				else printf(ANSI_BACKGROUND_RED);
+				printf(ANSI_COLOR_WHITE "%s" ANSI_COLOR_RESET ": Process exited with code %d\n"
+					, exec_name, ret_code);
+			}
 		} break;
 	}
 
-	printf("Press any key to continue... ");
-	getchar();
+	if(action == FS_ACTION_ENTER || *exec_failure) {
+		printf("Press any key to continue... ");
+		getchar();
+	}
 
 	enter_curses_mode();
 	return ret;
@@ -407,16 +429,24 @@ bool fs_action(BCPANEL *panel, fs_action_e action) {
 		case FS_ACTION_ENTER: {
 			if(S_ISDIR(curr.st.st_mode))
 				return fs_chdir(panel, curr.ent.d_name);
-			if(curr.st.st_mode & __S_IFREG && curr.st.st_mode & __S_IEXEC)
-				return fs_exec(panel, curr.ent.d_name);
+			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & __S_IEXEC)
+				return fs_exec(panel, curr.ent.d_name, action);
+
+			// we can do nothing on other types
+			return false;
+		}
+
+		case FS_ACTION_VIEW: {
+			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & __S_IREAD)
+				return fs_exec(panel, curr.ent.d_name, action);
 
 			// we can do nothing on other types
 			return false;
 		}
 
 		case FS_ACTION_EDIT: {
-			//if(curr->st.st_mode & __S_IFREG && curr->st.st_mode & __S_IWRITE)
-			//	return fs_edit(panel, curr->ent.d_name);
+			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & __S_IWRITE)
+				return fs_exec(panel, curr.ent.d_name, action);
 
 			// we can do nothing on other types
 			return false;
@@ -693,6 +723,16 @@ int main(int argc, char **argv) {
 			case RAW_KEY_NUMPAD_ENTER: // enter
 				fs_action(pcurr, FS_ACTION_ENTER);
 				shellbar->_clear = true;
+				break;
+
+			case RAW_KEY_F3:
+			case KEY_F(3):
+				fs_action(pcurr, FS_ACTION_VIEW);
+				break;
+
+			case RAW_KEY_F4:
+			case KEY_F(4):
+				fs_action(pcurr, FS_ACTION_EDIT);
 				break;
 
 			case KEY_F(10):

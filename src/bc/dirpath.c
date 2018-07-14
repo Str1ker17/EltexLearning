@@ -80,6 +80,7 @@ void dpt_init(DIRPATH *dpt, const char *path) {
 	}
 }
 
+/* deprecated
 DIRPATH *dpt_create(const char *path) {
 	DIRPATH *dpt = dcl_create();
 	if(dpt == NULL)
@@ -88,3 +89,4 @@ DIRPATH *dpt_create(const char *path) {
 	dpt_init(dpt, path);
 	return dpt;
 }
+*/

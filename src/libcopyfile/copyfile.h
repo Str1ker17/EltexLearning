@@ -4,6 +4,14 @@
 #undef __cplusplus
 #endif
 
+// tell that we want to affair with large files
+#define _FILE_OFFSET_BITS 64
+#define _LARGEFILE64_SOURCE
+
+#include <stddef.h>
+
+#define CHUNKSIZ 262144
+
 #define COPYFILE_MODE(x) ((x) & 0xff)
 
 // up to 256 modes
@@ -18,3 +26,5 @@
 // Behave like syscall:
 // 0 on success, -1 on error
 int copyfile(const char *src, const char *dst, int mode);
+
+int copyfile_progress(const char *src, const char *dst, int mode, size_t *written);
