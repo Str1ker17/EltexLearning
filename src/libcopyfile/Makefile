@@ -3,10 +3,11 @@
 # твою ж дивизию! определение переменных не требует таба!
 ifeq ($(MAKELEVEL),0)
 CC := gcc
-OBJDIR := ./
+LD := $(CC)
 endif
 
-ifeq ($(strip($(OBJDIR))),)
+ifeq ($(strip $(OBJDIR)),)
+OBJDIR := ./
 endif
 
 CFLAGS_LOCAL := -std=gnu99

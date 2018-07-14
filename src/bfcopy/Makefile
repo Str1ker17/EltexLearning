@@ -4,19 +4,14 @@
 ifeq ($(MAKELEVEL),0)
 CC := gcc
 LD := $(CC)
+endif
+
+ifeq ($(strip $(OBJDIR)),)
 OBJDIR := ./
 endif
 
 CFLAGS_LOCAL := -std=c99
 LDFLAGS_LOCAL :=
-
-ifeq ($(strip($(OBJDIR))),)
-endif
-
-ifeq ($(strip($(LIBDIR))),)
-# TODO
-#LDFLAGS_LOCAL := $(wildcard ../*/.)$(LDFLAGS_LOCAL)
-endif
 
 HEADERS := $(wildcard *.h)
 SOURCES := $(wildcard *.c)

@@ -6,3 +6,5 @@ obj
 *.so
 *.exe
 *logfile.log
+last-config
+last-config.now

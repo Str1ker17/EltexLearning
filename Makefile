@@ -1,4 +1,4 @@
-.PHONY: solution clean distclean debug release
+.PHONY: default solution debug release clean distclean
 
 # CONFIGURATION
 ifeq ($(strip $(CC)),)
@@ -6,7 +6,7 @@ CC := gcc
 endif
 
 LD := $(CC)
-CFLAGS :=
+CFLAGS := -Wno-unused-parameter
 LDFLAGS :=
 
 ROOTDIR := $(CURDIR)
@@ -15,20 +15,21 @@ LIBDIR := $(ROOTDIR)/lib/
 OBJDIR := $(ROOTDIR)/obj/
 SRCDIR := $(ROOTDIR)/src/
 
-# save time by omitting `default' targets
-MKFLG := -r
+# -r: save time by omitting `default' targets
+# -R: avoid auto-setting of CC, LD and some other variables
+MKFLG := -rR
 
 # export ALL variables
 export
 
 # BUILD CONFIGURATIONS
-release: CFLAGS := -Wextra -Wpedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
+release: CFLAGS := -Wextra -pedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
+release: override CONFIGURATION := release
 release: solution
-	echo Built Release
 
-debug: CFLAGS := -Wextra -O0 -ggdb -ffunction-sections -D DEBUG=1 -D _DEBUG=1 $(CFLAGS)
+debug: CFLAGS := -Wextra -pedantic -O0 -ggdb -ffunction-sections -D DEBUG=1 $(CFLAGS)
+debug: override CONFIGURATION := debug
 debug: solution
-	echo Built Debug
 
 # TARGETS
 solution:
