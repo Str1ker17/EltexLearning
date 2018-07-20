@@ -17,7 +17,7 @@ SRCDIR := $(ROOTDIR)/src/
 
 # -r: save time by omitting `default' targets
 # -R: avoid auto-setting of CC, LD and some other variables
-MKFLG := -rR
+MKFLG := rR
 
 # export ALL variables
 export
@@ -33,15 +33,15 @@ debug: solution
 
 # TARGETS
 solution:
-	$(MAKE) $(MKFLG) -C $(SRCDIR) projects
+	$(MAKE) -$(MKFLG)C $(SRCDIR) projects
 
 clean:
-	$(MAKE) $(MKFLG) -C $(SRCDIR) clean
+	$(MAKE) -$(MKFLG)C $(SRCDIR) clean
 
 distclean:
-	$(MAKE) $(MKFLG) -C $(SRCDIR) distclean
+	$(MAKE) -$(MKFLG)C $(SRCDIR) distclean
 
 # last resort target, to redirect all lower level targets
 # https://www.gnu.org/software/make/manual/html_node/Last-Resort.html
 %::
-	$(MAKE) $(MKFLG) -C $(SRCDIR) $@
+	$(MAKE) -$(MKFLG)C $(SRCDIR) $@
