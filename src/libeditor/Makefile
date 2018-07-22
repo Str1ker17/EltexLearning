@@ -1,30 +1,15 @@
 .PHONY: clean
 
-# твою ж дивизию! определение переменных не требует таба!
-ifeq ($(MAKELEVEL),0)
-CC := gcc
-LD := $(CC)
-endif
-
-ifeq ($(strip $(OBJDIR)),)
-OBJDIR := ./
-endif
+include $(BUILD_INITIALIZE)
 
 CFLAGS_LOCAL := -std=gnu99
 
-HEADERS := $(wildcard *.h)
-SOURCES := $(wildcard *.c)
-OBJECTS := $(SOURCES:.c=.o)
+LOCAL_HEADERS := $(wildcard *.h)
+LOCAL_SOURCES := $(wildcard *.c)
+LOCAL_DEPENDENCIES := 
+LOCAL_MODULE := libeditor.a
 
-$(LIBDIR)libeditor.a: $(OBJECTS)
-	cd $(OBJDIR) && ar rcs $@ $^
-	@echo -e \\x1b[32m AR \\x1b[0m $(shell realpath --relative-to $(ROOTDIR) $@)
-
-$(OBJECTS): $(HEADERS)
-%.o: %.c
-	$(CC) $(CFLAGS) $(CFLAGS_LOCAL) -c -o $(OBJDIR)$@ $<
-	@echo -e \\x1b[33m CC \\x1b[0m $(shell realpath --relative-to $(ROOTDIR) $(OBJDIR)$@)
+include $(BUILD_STATIC_LIBRARY)
 
 clean:
-	rm -f $(LIBDIR)*.a
-	rm -f $(OBJDIR)*.o
+	rm -f $(LIBDIR)/$(LOCAL_MODULE)

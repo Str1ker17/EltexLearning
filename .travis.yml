@@ -3,3 +3,9 @@ script: make && make debug
 compiler:
   - gcc
   - clang
+git:
+  depth: 1
+  quiet: true
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt install http://de.archive.ubuntu.com/ubuntu/pool/main/r/realpath/realpath_1.19_amd64.deb

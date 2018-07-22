@@ -1,19 +1,11 @@
-.PHONY: default solution debug release clean distclean
-
-# CONFIGURATION
-ifeq ($(strip $(CC)),)
-CC := gcc
-endif
-
-LD := $(CC)
-CFLAGS := -Wno-unused-parameter
-LDFLAGS :=
+.PHONY: all debug release clean distclean
 
 ROOTDIR := $(CURDIR)
-BINDIR := $(ROOTDIR)/bin/
-LIBDIR := $(ROOTDIR)/lib/
-OBJDIR := $(ROOTDIR)/obj/
-SRCDIR := $(ROOTDIR)/src/
+include $(ROOTDIR)/src-build/default-config.mk
+
+# whole solution flags
+CFLAGS := -Wno-unused-parameter
+LDFLAGS :=
 
 # -r: save time by omitting `default' targets
 # -R: avoid auto-setting of CC, LD and some other variables
@@ -27,16 +19,17 @@ CFLAGS := -Wextra -pedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
 override CONFIGURATION := release
 
 # BUILD CONFIGURATIONS
-release: CFLAGS := -Wextra -pedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
+release: CFLAGS := -Wextra -pedantic -O3 -march=native -mtune=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
 release: override CONFIGURATION := release
-release: solution
+release: all
 
-debug: CFLAGS := -Wextra -pedantic -O0 -ggdb -ffunction-sections -D DEBUG=1 -D VALGRIND_SUCKS $(CFLAGS)
+debug: CFLAGS := -Wextra -pedantic -O0 -ggdb -ffunction-sections -D DEBUG=1 $(CFLAGS)
+debug: CFLAGS += -D VALGRIND_SUCKS
 debug: override CONFIGURATION := debug
-debug: solution
+debug: all
 
 # TARGETS
-solution:
+all:
 	$(MAKE) -$(MKFLG)C $(SRCDIR) projects
 
 clean:
