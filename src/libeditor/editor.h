@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "vector.h"
+#include "../libvector/vector.h"
 
 typedef uint8_t byte;
 

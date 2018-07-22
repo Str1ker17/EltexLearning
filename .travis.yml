@@ -7,5 +7,6 @@ git:
   depth: 1
   quiet: true
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt install http://de.archive.ubuntu.com/ubuntu/pool/main/r/realpath/realpath_1.19_amd64.deb
+  - wget http://launchpadlibrarian.net/240350636/coreutils_8.25-2ubuntu2_amd64.deb
+  - sudo dpkg -i ./coreutils_8.25-2ubuntu2_amd64.deb
+  - realpath --version

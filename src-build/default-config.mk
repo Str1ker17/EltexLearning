@@ -23,9 +23,7 @@ BUILD_STATIC_LIBRARY := $(BUILD_SUBSYSTEM_PATH)/recipe_static.mk
 BUILD_EXECUTABLE     := $(BUILD_SUBSYSTEM_PATH)/recipe_executable.mk
 
 ifneq ($(strip $(shell realpath --version > /dev/null 2> /dev/null ; echo $$? )),0)
-	echo You have no `realpath' utility! Trying to recover...
-	(sudo apt install http://de.archive.ubuntu.com/ubuntu/pool/main/r/realpath/realpath_1.19_amd64.deb && realpath --version) || \
-	(echo Could not install from Internet, exiting. ; exit 1)
+	echo You have no `realpath' utility! Exiting. ; exit 1
 endif
 
 export
