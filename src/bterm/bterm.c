@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "../libncurses_util/linux_util.h"
+#include "../liblinux_util/linux_util.h"
 // Normally, gcc(1) translates calls to alloca() with inlined code.
 // This is not done when either the -ansi, -std=c89, -std=c99, or the
 // -std=c11 option is given AND the header <alloca.h> is not included.

@@ -17,17 +17,21 @@ SRCDIR := $(ROOTDIR)/src/
 
 # -r: save time by omitting `default' targets
 # -R: avoid auto-setting of CC, LD and some other variables
-MKFLG := rR
+# -s: silence is golden, enjoy short compilation messages
+MKFLG := rRs
 
 # export ALL variables
 export
+
+CFLAGS := -Wextra -pedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
+override CONFIGURATION := release
 
 # BUILD CONFIGURATIONS
 release: CFLAGS := -Wextra -pedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
 release: override CONFIGURATION := release
 release: solution
 
-debug: CFLAGS := -Wextra -pedantic -O0 -ggdb -ffunction-sections -D DEBUG=1 $(CFLAGS)
+debug: CFLAGS := -Wextra -pedantic -O0 -ggdb -ffunction-sections -D DEBUG=1 -D VALGRIND_SUCKS $(CFLAGS)
 debug: override CONFIGURATION := debug
 debug: solution
 

@@ -1,5 +1,5 @@
 language: c
-script: make && make clean debug && make clean release
+script: make && make debug
 compiler:
   - gcc
   - clang

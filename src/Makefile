@@ -41,38 +41,26 @@ SUBDIRS := $(shell find . -mindepth 1 -maxdepth 1 -type d  \( ! -iname ".*" \) |
 projects: subdirs $(SUBDIRS)
 # это позволяет собрать только одну подпапку, например: make libncurses_util
 # также здесь прописываем зависимости проектов
-# DEPENDENCIES
-bc: libncurses_util libeditor libcopyfile
-be: libncurses_util libeditor
-bterm: libncurses_util
-bfcopy: libncurses_util libcopyfile
-libeditor: libncurses_util
-libncurses_util:
+include Makefile.projdep.mak
 
 $(SUBDIRS): subdirs
 	$(MAKE) -$(MAKEFLAGS)C $@
 
-last-config-gen:
-	@echo [i] Compiler is $(CC), configuration is $(CONFIGURATION) | tee $(ROOTDIR)/last-config.now
-
-last-config: last-config-gen
-#last-config: DIFFCODE:=$(shell diff -N last-config last-config.now > /dev/null ; echo \$\? >&2 | tee last-config.code); echo $(DIFFCODE)
-#	echo $(DIFFCODE)
-#ifneq ($(DIFFCODE),0)
-#	@echo -e "\033[0;31mConfiguration changed, running clean\033[0m"
-#	$(MAKE) -sr clean
-#	cp -f last-config.now last-config
-#endif
+last-config:
+	echo [i] Compiler is $(CC), linker is $(LD), configuration is $(CONFIGURATION) | tee "$(ROOTDIR)/make.config.now"
+	diff -N "$(ROOTDIR)/make.config.prev" "$(ROOTDIR)/make.config.now" > /dev/null 2> /dev/null || ( echo -e "\\x1b[0;33mConfiguration changed (code $$?), running clean\\x1b[0m" ; $(MAKE) -rR clean )
+	cp -f "$(ROOTDIR)/make.config.now" "$(ROOTDIR)/make.config.prev"
 
 subdirs: last-config
-	@mkdir $(BINDIR) 2> /dev/null || true
-	@mkdir $(LIBDIR) 2> /dev/null || true
-	@mkdir $(OBJDIR) 2> /dev/null || true
+	-mkdir $(BINDIR) 2> /dev/null
+	-mkdir $(LIBDIR) 2> /dev/null
+	-mkdir $(OBJDIR) 2> /dev/null
 
 clean:
-	rm -rf $(BINDIR)
-	rm -rf $(LIBDIR)
-	rm -rf $(OBJDIR)
+	-rm -rf $(BINDIR)
+	-rm -rf $(LIBDIR)
+	-rm -rf $(OBJDIR)
+	-rm -f "$(ROOTDIR)/make.config.prev"
 	
 distclean:
-	@$(foreach dir,$(SUBDIRS),$(MAKE) -$(MAKEFLAGS) -C $(dir) clean;)
+	@$(foreach dir,$(SUBDIRS),$(MAKE) -$(MAKEFLAGS)C $(dir) clean;)

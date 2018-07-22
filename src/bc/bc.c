@@ -36,7 +36,7 @@
 #include "dircont.h"
 #include "dirpath.h"
 #include "../libncurses_util/ncurses_util.h"
-#include "../libncurses_util/linux_util.h"
+#include "../liblinux_util/linux_util.h"
 
 // количество строк, зарезервированных под что-то, кроме списка файлов
 #define PANEL_SPEC_LINES 3

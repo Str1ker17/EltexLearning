@@ -9,7 +9,7 @@
 #include <fcntl.h> // open()
 #include <sys/stat.h> // stat(), mkfifo()
 #include "../libeditor/editor.h"
-#include "../libncurses_util/linux_util.h"
+#include "../liblinux_util/linux_util.h"
 
 bool verbose = false;
 

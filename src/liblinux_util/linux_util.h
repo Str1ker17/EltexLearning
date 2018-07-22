@@ -27,13 +27,13 @@
 #define logprint(...) fprintf(stderr, __VA_ARGS__)
 
 // assert
-#define lassert(x) (void)((!!(x)) || syscall_error((#x), __FILE__, __LINE__))
-#define __syscall(x) lassert((x) != -1)
+#define lassert(x) (void)((!!(x)) || syscall_print_error(#x, __FILE__, __LINE__, 0))
+#define sysassert(x) (void)((!!(x)) || syscall_error(#x, __FILE__, __LINE__))
+#define __syscall(x) sysassert((x) != -1)
 
 // debug
 #define VERBOSE if(verbose)
 
 // exported functions
-int syscall_error(const char *x, const char *file, const int line);
-
-void syscall_print_error(const char *x, const char *file, const int line, const int err_no);
+extern int syscall_error(const char *x, const char *file, int line);
+extern int syscall_print_error(const char *x, const char *file, int line, int err_no);

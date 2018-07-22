@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "../libncurses_util/linux_util.h"
+#include "../liblinux_util/linux_util.h"
 
 // global variable
 const size_t copyfile_chunk = 262144; // 256K

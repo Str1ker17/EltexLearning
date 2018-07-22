@@ -6,5 +6,5 @@ obj
 *.so
 *.exe
 *logfile.log
-last-config
-last-config.now
+make.config.prev
+make.config.now

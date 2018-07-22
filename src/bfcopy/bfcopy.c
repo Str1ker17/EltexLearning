@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include "../libcopyfile/copyfile.h"
-#include "../libncurses_util/linux_util.h"
+#include "../liblinux_util/linux_util.h"
 
 #define STR_EXPAND(tok) #tok
 #define STR(tok) STR_EXPAND(tok)

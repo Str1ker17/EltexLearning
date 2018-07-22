@@ -28,7 +28,7 @@
 
 // reuse code
 #include "../libncurses_util/ncurses_util.h"
-#include "../libncurses_util/linux_util.h"
+#include "../liblinux_util/linux_util.h"
 #include "editor.h"
 
 #define printl(...) { endwin(); printf(__VA_ARGS__); exit(EXIT_FAILURE); }

@@ -1,4 +1,6 @@
-# EltexLearning
+# EltexLearning 
+Whole project status for `trunk`: [![Build Status](https://travis-ci.com/Str1ker17/EltexLearning.svg?branch=trunk)](https://travis-ci.com/Str1ker17/EltexLearning)
+
 This is a personal repository with learning tasks.
 
 Currently done programs:
@@ -10,7 +12,9 @@ Currently done programs:
 Currently done libraries:
 - `libcopyfile` - copy file using different methods (stdio, file descriptors, sendfile)
 - `libeditor` - embeds functionality of text editor
-- `libncurses_util` - function to ease developement with linux and ncurses
+- `liblinux_util` - function to ease developement with linux
+- `libncurses_util` - function to ease developement with ncurses
+- `libvector` - implements simple array-like collection with ability to grow, containing 64-bit integers
 
 How to build:
 - Clone this repo
@@ -19,5 +23,3 @@ How to build:
 - Executables are in `bin` subdirectory, libraries are in `lib`
 
 Feel free to send issues and pull requests.
-
-Whole project status for `trunk`: [![Build Status](https://travis-ci.com/Str1ker17/EltexLearning.svg?branch=trunk)](https://travis-ci.com/Str1ker17/EltexLearning)
