@@ -30,4 +30,4 @@ extern const size_t copyfile_chunk;
 
 // Behave like syscall:
 // 0 on success, -1 on error
-extern int copyfile(const char *src, const char *dst, const int mode, size_t *progress);
+extern int copyfile(const char *src, const char *dst, int mode, size_t *progress);

@@ -38,11 +38,11 @@ int main(int argc, char **argv) {
 	while(true) {
 		ssize_t red = read(fd, buf, BUFSIZ);
 		if (red == -1) {
-			logprint(ANSI_BACKGROUND_RED ANSI_COLOR_WHITE "[x] read() error" ANSI_COLOR_RESET "\n");
+			logprint(ANSI_BKGRD_RED ANSI_COLOR_WHITE "[x] read() error" ANSI_COLOR_RESET "\n");
 			break;
 		}
 		if(red == 0) {
-			logprint(ANSI_BACKGROUND_YELLOW ANSI_COLOR_BLACK "[i] end-of-file" ANSI_COLOR_RESET "\n");
+			logprint(ANSI_BKGRD_YELLOW ANSI_COLOR_BLACK "[i] end-of-file" ANSI_COLOR_RESET "\n");
 			break;
 			//usleep(250000);
 		}

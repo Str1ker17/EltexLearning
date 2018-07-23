@@ -56,7 +56,7 @@ enum raw_keys {
 };
 #pragma GCC diagnostic warning "-Wpedantic"
 
-bool ncurses_raise_error(const char *x, const char *file, const int line);
+bool ncurses_raise_error(const char *x, const char *file, int line);
 chtype *create_chstr(char *str, int len, chtype attr);
 int mvwaddattrfstr(WINDOW *wnd, int y, int x, int len, char *str, chtype attr);
 int64_t raw_wgetch(WINDOW *wnd);

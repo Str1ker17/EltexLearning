@@ -250,8 +250,7 @@ int editor_main(int argc, char **argv) {
 		werase(stdscr);
 
 		// put text
-		int i;
-		for(i = 0; i < rows; i++) {
+		for(int i = 0; i < rows; i++) {
 			char *str = scrbuf.scr_lines[i].str;
 			if(str == NULL) // eof
 				break;

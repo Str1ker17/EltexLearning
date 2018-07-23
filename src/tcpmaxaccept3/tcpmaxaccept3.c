@@ -142,8 +142,7 @@ int main(int argc, char **argv) {
 			case 'v': verbose = true; break;
 
 			default:
-				logprint(ANSI_BACKGROUND_YELLOW ANSI_COLOR_BLACK "[!]" ANSI_COLOR_RESET
-					" Unknown command-line argument with value: %s\n", optarg);
+				ALOGW("Unknown command-line argument with value: %s\n", optarg);
 			break;
 		}
 	}
@@ -164,9 +163,7 @@ int main(int argc, char **argv) {
 		rlm.rlim_cur = SOCKETS_MAX;
 		//rlm.rlim_max = RLIM_SAVED_CUR;
 		if(setrlimit(RLIMIT_NOFILE, &rlm) == -1) {
-			logprint(
-				  ANSI_BACKGROUND_YELLOW ANSI_COLOR_BLACK "[!]" ANSI_COLOR_RESET
-				  " Could not setrlimit() for RLIMIT_NOFILE; you can encounter open file limit\n"
+			ALOGW("Could not setrlimit() for RLIMIT_NOFILE; you can encounter open file limit\n"
 				  "\t(%d = %s)\n"
 				, errno, strerror(errno)
 			);
@@ -205,9 +202,8 @@ int main(int argc, char **argv) {
 	pthread_t spawner_tid;
 	SVPARAM param = { .epoll_fd = epfd, .sv_addr = s_addr, .sv_port = SERVER_PORT, .ports = &vector_ports };
 	if(pthread_create(&spawner_tid, NULL, spawner_thread, &param) == -1) {
-		logprint(ANSI_BACKGROUND_RED ANSI_COLOR_BLACK "[x]" ANSI_COLOR_RESET
-			" Could not pthread_create() to working thread; exiting.\n");
-		syscall_error(ANSI_BACKGROUND_RED ANSI_COLOR_BLACK "[x]" ANSI_COLOR_RESET
+		ALOGE("Could not pthread_create() to working thread; exiting.\n");
+		syscall_error(ANSI_BKGRD_RED ANSI_COLOR_BLACK "[x]" ANSI_COLOR_RESET
 			, __FILE__, __LINE__);
 	}
 
@@ -244,9 +240,9 @@ int main(int argc, char **argv) {
 			if(show_verbose_message) {
 				__syscall(getsockname(epevent.data.fd, (struct sockaddr*)&sockname, &sockname_len));
 				if (epevent.events & EPOLLERR)
-					logprint(ANSI_BACKGROUND_RED ANSI_COLOR_WHITE "[x]" ANSI_COLOR_RESET);
+					ALOGE();
 				else
-					logprint(ANSI_BACKGROUND_WHITE ANSI_COLOR_BLACK "[-]" ANSI_COLOR_RESET);
+					ALOGV();
 				
 				logprint(
 					  " Socket: %s:%hu <=> "
@@ -272,7 +268,7 @@ int main(int argc, char **argv) {
 					__syscall(epoll_add(epfd, sock_peer, EPOLLIN | EPOLLERR, 0));
 					++counter;
 					VERBOSE {
-						logprint(ANSI_BACKGROUND_MAGENTA "[i]" ANSI_COLOR_RESET
+						logprint(ANSI_BKGRD_MAGENTA "[i]" ANSI_COLOR_RESET
 						  " Accepted peer from %s:%hu (counter = %zu)\n"
 							, inet_ntoa(peername.sin_addr)
 							, htons(peername.sin_port)
@@ -288,7 +284,7 @@ int main(int argc, char **argv) {
 					ssize_t rcvd;
 					lassert((rcvd = recv(epevent.data.fd, buf, CUTSIZE, 0)) == CUTSIZE);
 					VERBOSE {
-						logprint(ANSI_BACKGROUND_CYAN ANSI_COLOR_BLACK "[i]" ANSI_COLOR_RESET
+						logprint(ANSI_BKGRD_CYAN ANSI_COLOR_BLACK "[i]" ANSI_COLOR_RESET
 							  " Received data: " ANSI_COLOR_MAGENTA "%10s" ANSI_COLOR_RESET "\n"
 							, buf
 						);
@@ -309,7 +305,7 @@ int main(int argc, char **argv) {
 			}
 		}
 		if((counter >> 5) != counter_perc || counter == vector_ports.size) {
-			logprint("\033[1A" ANSI_BACKGROUND_GREEN ANSI_COLOR_BLACK "[i]" ANSI_COLOR_RESET
+			logprint("\033[1A" ANSI_BKGRD_GREEN ANSI_COLOR_BLACK "[i]" ANSI_COLOR_RESET
 						" Child connections accepted, "
 						"counter = " ANSI_COLOR_GREEN "%zu" ANSI_COLOR_RESET " "
 						"spawner = " ANSI_COLOR_MAGENTA "%zu" ANSI_COLOR_RESET

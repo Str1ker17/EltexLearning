@@ -403,8 +403,8 @@ bool fs_exec(BCPANEL *panel, const char *filename, fs_action_e action) {
 			lassert(waitpid(pid, &stat_loc, 0) != -1);
 			if(action == FS_ACTION_ENTER) {
 				int ret_code = (stat_loc >> 8) & 0xff;
-				if (ret_code == 0) printf(ANSI_BACKGROUND_GREEN);
-				else printf(ANSI_BACKGROUND_RED);
+				if (ret_code == 0) printf(ANSI_BKGRD_GREEN);
+				else printf(ANSI_BKGRD_RED);
 				printf(ANSI_COLOR_WHITE "%s" ANSI_COLOR_RESET ": Process exited with code %d\n"
 					, exec_name, ret_code);
 			}
