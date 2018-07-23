@@ -26,7 +26,7 @@
 // output
 #define logprint(...) fprintf(stderr, __VA_ARGS__)
 
-// assert
+// assert (release-time)
 #define lassert(x) (void)((!!(x)) || syscall_print_error(#x, __FILE__, __LINE__, 0))
 #define sysassert(x) (void)((!!(x)) || syscall_error(#x, __FILE__, __LINE__))
 #define __syscall(x) sysassert((x) != -1)

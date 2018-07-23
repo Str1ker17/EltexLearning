@@ -17,7 +17,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <assert.h>
 #include <string.h>
 
 #include <netinet/in.h>
@@ -73,7 +72,7 @@ int epoll_add(int epfd, int sockfd, int events, int extra32) {
 
 // ipv4iface is reversed to network byte order
 void reserve_max_ports(int32_t ipv4iface, VECTOR *vec_out) {
-	assert(vec_out->size == 0);
+	lassert(vec_out->size == 0);
 
 	for(int port = 1; port <= 65535; ++port) {
 		//if(port == SERVER_PORT)
@@ -91,7 +90,7 @@ void reserve_max_ports(int32_t ipv4iface, VECTOR *vec_out) {
 			FDEPUN fdport;
 			fdport.endpoint.fd = sock;
 			fdport.endpoint.port = ((unsigned short)port & 0xffff);
-			assert(vector_push_back(vec_out, fdport.v_vect));
+			lassert(vector_push_back(vec_out, fdport.v_vect));
 		}
 		else {
 			VERBOSE logprint("[:(] The port %hu is busy (%d = %s)\n"
@@ -186,7 +185,7 @@ int main(int argc, char **argv) {
 
 	// reserve sockets
 	VECTOR vector_ports;
-	assert(vector_init(&vector_ports, 65535));
+	lassert(vector_init(&vector_ports, 65535));
 	reserve_max_ports(htonl(INADDR_LOOPBACK + 1), &vector_ports);
 	logprint("[i] Port reserver succeeded for %zu ports.\n", vector_ports.size);
 

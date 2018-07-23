@@ -1,6 +1,5 @@
 #include "ncurses_util.h"
 #include <stdlib.h>
-#include <assert.h>
 
 bool ncurses_raise_error(const char *x, const char *file, const int line) {
 	endwin();
@@ -48,7 +47,8 @@ int64_t raw_wgetch(WINDOW *wnd) {
 	if (c == RAW_KEY_ESC) {
 		nassert(nodelay(wnd, true)); // is it safe?
 		do {
-			assert(0 <= c && c < 256);
+			if(!(0 <= c && c < 256))
+				abort();
 			raw_key = raw_key << 8 | c;
 		} while ((c = wgetch(wnd)) != ERR);
 		nassert(nodelay(wnd, false));
