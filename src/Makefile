@@ -22,7 +22,7 @@ export
 
 # https://superuser.com/a/593404
 SUBDIRS := $(shell find . -mindepth 1 -maxdepth 1 -type d  \( ! -iname ".*" \) | sed 's|^\./||g')
-.PHONY: $(SUBDIRS)
+#.PHONY: $(SUBDIRS)
 
 projects: subdirs $(SUBDIRS)
 # это позволяет собрать только одну подпапку, например: make libncurses_util
@@ -30,7 +30,7 @@ projects: subdirs $(SUBDIRS)
 include Makefile.projdep.mk
 
 $(SUBDIRS): subdirs
-	$(MAKE) -$(MAKEFLAGS)C $@
+	$(MAKE) -$(MKFLAGS)C $@
 
 last-config:
 	echo [i] Compiler is $(CC), linker is $(LD), configuration is $(CONFIGURATION) | tee "$(ROOTDIR)/make.config.now"
@@ -50,4 +50,4 @@ clean:
 	-rm -f "$(ROOTDIR)/make.config.prev"
 	
 distclean:
-	@$(foreach dir,$(SUBDIRS),$(MAKE) -$(MAKEFLAGS)C "$(dir)" clean;)
+	@$(foreach dir,$(SUBDIRS),$(MAKE) -$(MKFLAGS)C "$(dir)" clean;)

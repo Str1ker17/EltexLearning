@@ -8,3 +8,4 @@ obj
 *logfile.log
 make.config.prev
 make.config.now
+core
