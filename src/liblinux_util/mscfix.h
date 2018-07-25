@@ -9,3 +9,5 @@
 #undef __cplusplus
 #define __builtin_alloca NULL
 #endif
+
+#define assert #error "Avoid using assert"

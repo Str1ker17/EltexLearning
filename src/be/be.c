@@ -11,8 +11,6 @@
 #include "../libeditor/editor.h"
 #include "../liblinux_util/linux_util.h"
 
-bool verbose = false;
-
 int main(int argc, char **argv) {
 	int e;
 	// If the first character of optstring is '-', then each

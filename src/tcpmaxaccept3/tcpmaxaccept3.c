@@ -42,7 +42,6 @@
 #define SOCKETS_MAX 131071 // 65535 * 2 + 1
 #define EPOLL_BATCH 16
 
-volatile bool verbose = false;
 const char text[] = "The quick brown fox jumps over the lazy dog.";
 volatile size_t spawner_count = 0;
 
@@ -112,7 +111,7 @@ void *spawner_thread(void *argv) {
 		FDEPUN fdport;
 		fdport.v_vect = param.ports->array[spawner_count];
 		int sock_peer = fdport.endpoint.fd;
-		
+
 		int val = 1;
 		__syscall(setsockopt(sock_peer, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)));
 
@@ -120,8 +119,8 @@ void *spawner_thread(void *argv) {
 		__syscall(connect(sock_peer, (struct sockaddr*)&param.sv_addr, addr_len));
 		sysassert(send(sock_peer, text + rand() % sizeof(text) - CUTSIZE - 1, CUTSIZE, 0) == CUTSIZE);
 		__syscall(epoll_add(param.epoll_fd, sock_peer, EPOLLIN | EPOLLERR, 0));
-		
-        ++spawner_count;
+
+		++spawner_count;
 		if(spawner_count >= param.ports->size) {
 			leaving = true;
 		}

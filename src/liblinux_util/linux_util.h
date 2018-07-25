@@ -1,5 +1,8 @@
 #pragma once
 
+#include "mscfix.h"
+#include <stdbool.h>
+
 // Colored output
 // https://stackoverflow.com/a/3219471/1543625
 // Don't bother with libraries, the code is really simple.
@@ -59,6 +62,7 @@
 #define __syscall(x) sysassert((x) != -1)
 
 // debug
+extern bool verbose;
 #define VERBOSE if(verbose)
 
 // exported functions

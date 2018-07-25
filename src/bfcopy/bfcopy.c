@@ -12,8 +12,6 @@
 #define STR_EXPAND(tok) #tok
 #define STR(tok) STR_EXPAND(tok)
 
-bool verbose = false;
-
 int main(int argc, char **argv) {
 	if(argc < 3) {
 		logprint("[x] Specify source and destination file\n");
