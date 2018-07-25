@@ -191,11 +191,15 @@ ssize_t perform_broadcast_udp_receiver(RTOptions *rto) {
 	__syscall(bind(rto->sock, (struct sockaddr*)&sin, sizeof(sin)));
 
 	char buf[DGRAM_MAX];
+	char optval[INET_ADDRSTRLEN];
 	ssize_t rcvd;
-	socklen_t addrlen = sizeof(sin);
-	__syscall(rcvd = recvfrom(rto->sock, buf, DGRAM_MAX, 0, (struct sockaddr*)&sin, &addrlen));
-
-	ALOGI("%s\n", buf);
+	while(true) {
+		socklen_t addrlen = sizeof(sin);
+		__syscall(rcvd = recvfrom(rto->sock, buf, DGRAM_MAX, 0, (struct sockaddr*)&sin, &addrlen));
+		inet_ntop(AF_INET, &(sin.sin_addr), optval, INET_ADDRSTRLEN);
+		ALOGI("Received from %s:%hu, %u bytes len:\n", optval, ntohs(sin.sin_port), rcvd);
+		logprint("\t%s\n", buf);
+	}
 
 	return 0;
 }
