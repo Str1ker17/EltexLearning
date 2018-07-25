@@ -1,6 +1,8 @@
 #pragma once
 
+// Note: this include is a beta feature for design- and compile-time
 #include "mscfix.h"
+
 #include <stdbool.h>
 
 // Colored output

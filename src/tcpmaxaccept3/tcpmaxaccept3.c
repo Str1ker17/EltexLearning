@@ -183,6 +183,7 @@ int main(int argc, char **argv) {
 	VECTOR vector_ports;
 	lassert(vector_init(&vector_ports, 65535));
 	reserve_max_ports(htonl(INADDR_LOOPBACK + 1), &vector_ports);
+	lassert(vector_shrink_to_fit(&vector_ports));
 	logprint("[i] Port reserver succeeded for %zu ports.\n", vector_ports.size);
 
 	// наборчик событий от epoll
@@ -250,7 +251,7 @@ int main(int argc, char **argv) {
 				);
 
 				if (getpeername(epevent.data.fd, (struct sockaddr*)&peername, &peername_len) != -1) {
-					logprint("%s:%hu", inet_ntoa(peername.sin_addr), htons(peername.sin_port));
+					logprint("%s:%hu", inet_ntoa(peername.sin_addr), ntohs(peername.sin_port));
 				}
 				else {
 					logprint(ANSI_COLOR_YELLOW "LISTENING" ANSI_COLOR_RESET);
@@ -270,7 +271,7 @@ int main(int argc, char **argv) {
 						logprint(ANSI_BKGRD_MAGENTA "[i]" ANSI_COLOR_RESET
 						  " Accepted peer from %s:%hu (counter = %zu)\n"
 							, inet_ntoa(peername.sin_addr)
-							, htons(peername.sin_port)
+							, ntohs(peername.sin_port)
 							, counter
 						);
 					}

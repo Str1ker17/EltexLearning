@@ -1,8 +1,6 @@
 #pragma once
 
-#if defined(_MSC_VER)
-#undef __cplusplus
-#endif
+#include "../liblinux_util/mscfix.h"
 
 #include <stdbool.h>
 #include <dirent.h>
@@ -28,7 +26,7 @@ typedef struct __dircont {
 	DIRCONT_LIST_ENTRY *head;
 	DIRCONT_LIST_ENTRY *tail;
 	//DIRCONT_LIST_ENTRY *cur;
-	__ino64_t ino_self;
+	__ino_t ino_self;
 	size_t count;
 } DIRCONT;
 

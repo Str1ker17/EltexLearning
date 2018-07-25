@@ -6,15 +6,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
+
 #include <getopt.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include "../liblinux_util/linux_util.h"
-#include <time.h>
 
-#define TEXT_STRMAX 80
+#define TEXT_STRMAX 60
 #define DGRAM_MAX 65535
 
 const char text[][TEXT_STRMAX] = {
@@ -97,11 +98,11 @@ typedef struct __rt_options {
 		uint16_t numeric_value;
 		BFOptions l;
 	} f;
-	uint16_t port; // default port
+	uint16_t port; // default port, Network binary format (Big-Endian)
 	int sock;
-	struct in_addr addrv4_if;
-	struct in_addr addrv4_mask;
-	struct in_addr addrv4_grp;
+	struct in_addr addrv4_if; // Network binary format (Big-Endian)
+	struct in_addr addrv4_mask; // Network binary format (Big-Endian)
+	struct in_addr addrv4_grp; // Network binary format (Big-Endian)
 } RTOptions;
 
 #define bflags f.l
@@ -152,7 +153,7 @@ void print_options(RTOptions *rto) {
 		, rto->bflags.proto_udp ? "UDP" : "TCP"
 		, rto->bflags.receiver ? "Receiver" : "Sender"
 		, rto->f.numeric_value & 0x7
-		, ntohs(rto->port)
+		, rto->port
 	);
 	char *if_color = (rto->f.l._if_accessible ? ANSI_COLOR_BRIGHT_WHITE : ANSI_COLOR_RED);
 	ALOGV("addr_if: "            "%s"          "%s" ANSI_CLRST " \t"
@@ -170,10 +171,13 @@ ssize_t perform_broadcast_udp_sender(RTOptions *rto) {
 	__syscall(setsockopt(rto->sock, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)));
 	struct sockaddr_in sin = {
 		  .sin_addr = ((rto->addrv4_if.s_addr) | ~(rto->addrv4_mask.s_addr))
-		, .sin_port = htons(rto->port)
+		, .sin_port = rto->port
 		, .sin_family = AF_INET
 	};
 	const char *ptr = text[rand() % text_lines];
+	char optval[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(sin.sin_addr), optval, INET_ADDRSTRLEN);
+	ALOGV("Sending %zu bytes to %s:%hu...\n", strlen(ptr), optval, ntohs(rto->port));
 	ssize_t sent;
 	__syscall(sent = sendto(rto->sock, ptr, strlen(ptr) + 1, 0, (struct sockaddr*)&sin, sizeof(sin)));
 
@@ -185,19 +189,20 @@ ssize_t perform_broadcast_udp_receiver(RTOptions *rto) {
 	__syscall(rto->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP));
 	struct sockaddr_in sin = {
 		  .sin_addr = ((rto->addrv4_if.s_addr) | ~(rto->addrv4_mask.s_addr))
-		, .sin_port = htons(rto->port)
+		, .sin_port = rto->port
 		, .sin_family = AF_INET
 	};
 	__syscall(bind(rto->sock, (struct sockaddr*)&sin, sizeof(sin)));
 
 	char buf[DGRAM_MAX];
 	char optval[INET_ADDRSTRLEN];
-	ssize_t rcvd;
 	while(true) {
 		socklen_t addrlen = sizeof(sin);
-		__syscall(rcvd = recvfrom(rto->sock, buf, DGRAM_MAX, 0, (struct sockaddr*)&sin, &addrlen));
+		ssize_t rcvd = recvfrom(rto->sock, buf, DGRAM_MAX, 0, (struct sockaddr*)&sin, &addrlen);
+		if(rcvd <= 0)
+			break;
 		inet_ntop(AF_INET, &(sin.sin_addr), optval, INET_ADDRSTRLEN);
-		ALOGI("Received from %s:%hu, %u bytes len:\n", optval, ntohs(sin.sin_port), rcvd);
+		ALOGI("Received from %s:%hu, %ld bytes len:\n", optval, ntohs(sin.sin_port), rcvd);
 		logprint("\t%s\n", buf);
 	}
 
@@ -219,7 +224,7 @@ int main(int argc, char **argv) {
 		, .port = htons(2018)
 		, .addrv4_if = INADDR_ANY
 		, .addrv4_grp = htonl(0xE0000001) // 224.0.0.1
-		, .addrv4_mask = ~INADDR_ANY
+		, .addrv4_mask = ~INADDR_ANY // 255.255.255.255
 	};
 
 	// parse options
@@ -266,7 +271,6 @@ int main(int argc, char **argv) {
 	srand(time(NULL));
 	// TODO: https://linux.die.net/man/3/getifaddrs
 	// Also, https://gist.github.com/edufelipe/6108057
-	bool addrv4_if_accessible = false;
 	char addrstr[INET_ADDRSTRLEN];
 	struct in_addr addrv4;
 	struct ifaddrs *ifap_head;
@@ -302,8 +306,11 @@ int main(int argc, char **argv) {
 				
 				if(ifap->ifa_flags & IFLA_BROADCAST) {
 					// allow only ifaces with broadcast flag
-					if(addrv4.s_addr == rto.addrv4_if.s_addr)
-						addrv4_if_accessible = true;
+					if(rto.addrv4_if.s_addr == addrv4.s_addr) {
+						// TODO: change mask?
+						rto.addrv4_mask = ((struct sockaddr_in*)ifap->ifa_netmask)->sin_addr;
+						rto.bflags._if_accessible = true;
+					}
 
 					lassert(
 						inet_ntop(AF_INET
@@ -329,7 +336,7 @@ int main(int argc, char **argv) {
 			rto.addrv4_if = ((struct sockaddr_in*)ifap->ifa_addr)->sin_addr;
 			rto.addrv4_mask = ((struct sockaddr_in*)ifap->ifa_netmask)->sin_addr;
 			lassert(inet_ntop(AF_INET, &rto.addrv4_if, addrstr, INET_ADDRSTRLEN) != NULL);
-			rto.f.l._if_accessible = true;
+			rto.bflags._if_accessible = true;
 			ALOGI("Autoselected interface: %s/%d\n", addrstr, __builtin_popcount(rto.addrv4_mask.s_addr));
 		}
 	}
