@@ -15,12 +15,10 @@ MKFLG := rRs
 # export ALL variables
 export
 
-CFLAGS := -Wextra -pedantic -O3 -march=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
+CFLAGS := -Wextra -pedantic -O3 -g -march=native -mtune=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
 override CONFIGURATION := release
 
 # BUILD CONFIGURATIONS
-release: CFLAGS := -Wextra -pedantic -O3 -march=native -mtune=native -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
-release: override CONFIGURATION := release
 release: all
 
 debug: CFLAGS := -Wextra -pedantic -O0 -ggdb -ffunction-sections -D DEBUG=1 $(CFLAGS)

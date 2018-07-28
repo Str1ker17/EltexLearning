@@ -1,3 +1,6 @@
+// Note: this include is a beta feature for design- and compile-time
+#include "../liblinux_util/mscfix.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include "vector.h"

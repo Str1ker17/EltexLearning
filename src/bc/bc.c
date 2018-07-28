@@ -5,10 +5,8 @@
  * @Modified: 11 Jul 2018
  */
 
-#if defined(_MSC_VER)
-#undef __cplusplus
-#define __builtin_alloca(size) NULL
-#endif
+// Note: this include is a beta feature for design- and compile-time
+#include "../liblinux_util/mscfix.h"
 
 #include <stdio.h>
 #include <stdlib.h>

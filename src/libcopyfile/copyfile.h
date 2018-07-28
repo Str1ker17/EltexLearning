@@ -1,8 +1,7 @@
 #pragma once
 
-#ifdef _MSC_VER
-#undef __cplusplus
-#endif
+// Note: this include is a beta feature for design- and compile-time
+#include "../liblinux_util/mscfix.h"
 
 // tell that we want to affair with large files
 //#define _FILE_OFFSET_BITS 64

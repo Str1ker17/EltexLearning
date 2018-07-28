@@ -1,8 +1,7 @@
 #pragma once
 
-#ifdef _MSC_VER
-#undef __cplusplus
-#endif
+// Note: this include is a beta feature for design- and compile-time
+#include "../liblinux_util/mscfix.h"
 
 #include <stdio.h>
 #include <stdbool.h>

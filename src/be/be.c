@@ -1,7 +1,5 @@
-#ifdef _MSC_VER
-#undef __cplusplus
-#define __builtin_alloca(size) NULL // in real MSVC: _alloca(size)
-#endif
+// Note: this include is a beta feature for design- and compile-time
+#include "../liblinux_util/mscfix.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -41,7 +39,7 @@ int main(int argc, char **argv) {
 
 		if (stat(name, st) == 0) {
 			// exists
-			if((st->st_mode & __S_IFMT) != __S_IFIFO) {
+			if(!S_ISFIFO(st->st_mode)) {
 				printf("[x] File '%s' exists and not a FIFO (named pipe)\n", name);
 				exit(EXIT_FAILURE);
 			}

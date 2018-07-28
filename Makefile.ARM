@@ -3,8 +3,11 @@
 ROOTDIR := $(CURDIR)
 include $(ROOTDIR)/src-build/default-config.mk
 
+# cross-compiler
+CROSS_COMPILE := /home/striker/bin/cross-compile/arm-linux-gnueabi-linaro_4.7.4-2014.06/bin/arm-linux-gnueabi-gcc
+override CC := $(CROSS_COMPILE)
 # whole solution flags
-CFLAGS := -Wno-unused-parameter
+CFLAGS := -Wno-unused-parameter -mabi=aapcs-linux -mfloat-abi=soft -march=armv7-a
 # it is unknown for me how to link with target glibc
 LDFLAGS := -static
 
@@ -19,8 +22,9 @@ export
 # BUILD CONFIGURATIONS
 # optimized for eltex tc-50 thin client, you can set another one
 # it is a question can we use `-march=armv7-a' there
-release: CFLAGS := -Wextra -pedantic -O3 -mabi=aapcs-linux -mfloat-abi=soft -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
-release: override CONFIGURATION := release
+CFLAGS := -Wextra -pedantic -O3 -g -D NDEBUG=1 -D RELEASE=1 $(CFLAGS)
+override CONFIGURATION := release
+
 release: all
 
 debug: CFLAGS := -Wextra -pedantic -O0 -ggdb -ffunction-sections -D DEBUG=1 $(CFLAGS)
@@ -31,6 +35,9 @@ debug: all
 # TARGETS
 all:
 	$(MAKE) -$(MKFLG)C $(SRCDIR) projects
+
+external:
+	$(MAKE) -$(MKFLG)C $(ROOTDIR)/src-build/external
 
 clean:
 	$(MAKE) -$(MKFLG)C $(SRCDIR) clean

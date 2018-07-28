@@ -82,7 +82,7 @@ static const char *__bitf_rt_mode_name[] = {
 	FOREACH_FRUIT(GENERATE_STRING)
 };
 
-typedef struct __bitfield_options {
+/*typedef struct __bitfield_options {
 	// WARNING: we are on Little-Endian architecture
 	unsigned receiver: 1; // false if sender
 	unsigned proto_udp: 1; // false if tcp
@@ -91,13 +91,31 @@ typedef struct __bitfield_options {
 	unsigned _if_accessible: 1;
 	unsigned _if_bcast_flag: 1;
 	unsigned __padding: 11;
-} __attribute__((packed)) BFOptions;
+} __attribute__((packed)) BFOptions;*/
+
+typedef enum __bitwise_flags {
+	  BWF_RECEIVER
+	, BWF_PROTO_UDP
+	, BWF_BROADCAST
+	, BWF_IF_ACCESSIBLE
+	, BWF_IF_HAS_BCAST_FLAGS
+} BWFlags;
+
+#define BWF_MODE_MASK 0x7
+
+// return 1 in proper position
+#define RTO_BITFLAG(numflg,flag) ((numflg) & (1 << (flag)))
+// return true or false
+#define RTO_HASFLAG(numflg,flag) (((numflg) >> (flag)) & 1)
+// set 1 to proper position
+#define RTO_SETFLAG(numflg,flag) ((numflg) |= (1 << (flag)))
+// set 0 to proper position
+#define RTO_UNSETFLAG(numflg,flag) ((numflg) &= ~(1 << (flag)))
+// get numeric value of flag, allowing to combine them
+#define RTO_VALFLAG(flag) (1 << (flag))
 
 typedef struct __rt_options {
-	union {
-		uint16_t numeric_value;
-		BFOptions l;
-	} f;
+	uint16_t flags;
 	uint16_t port; // default port, Network binary format (Big-Endian)
 	int sock;
 	struct in_addr addrv4_if; // Network binary format (Big-Endian)
@@ -105,11 +123,7 @@ typedef struct __rt_options {
 	struct in_addr addrv4_grp; // Network binary format (Big-Endian)
 } RTOptions;
 
-#define bflags f.l
-
-#ifdef _MSC_VER
-#define __builtin_popcount(val) 0
-#endif
+//#define bflags f.l
 
 void print_help() {
 	ALOGV("B/M cast multisoftware\n");
@@ -149,13 +163,14 @@ void print_options(RTOptions *rto) {
 	inet_ntop(AF_INET, &(rto->addrv4_mask), optval + INET_ADDRSTRLEN, INET_ADDRSTRLEN);
 	inet_ntop(AF_INET, &(rto->addrv4_grp), optval + INET_ADDRSTRLEN * 2, INET_ADDRSTRLEN);
 	ALOGV("Mode: %s %s %s (mode no = %u), port %hu\n"
-		, rto->bflags.broadcast ? "Broadcast" : "Multicast"
-		, rto->bflags.proto_udp ? "UDP" : "TCP"
-		, rto->bflags.receiver ? "Receiver" : "Sender"
-		, rto->f.numeric_value & 0x7
+		, RTO_HASFLAG(rto->flags, BWF_BROADCAST) ? "Broadcast" : "Multicast"
+		, RTO_HASFLAG(rto->flags, BWF_PROTO_UDP) ? "UDP" : "TCP"
+		, RTO_HASFLAG(rto->flags, BWF_RECEIVER) ? "Receiver" : "Sender"
+		, rto->flags & BWF_MODE_MASK
 		, rto->port
 	);
-	char *if_color = (rto->f.l._if_accessible ? ANSI_COLOR_BRIGHT_WHITE : ANSI_COLOR_RED);
+	char *if_color = 
+		(RTO_HASFLAG(rto->flags, BWF_IF_ACCESSIBLE) ? ANSI_COLOR_BRIGHT_WHITE : ANSI_COLOR_RED);
 	ALOGV("addr_if: "            "%s"          "%s" ANSI_CLRST " \t"
 		  "netmask: "  ANSI_COLOR_BRIGHT_WHITE "%s" ANSI_CLRST " \t"
 		  "addr_grp: " ANSI_COLOR_BRIGHT_WHITE "%s" ANSI_CLRST "\n"
@@ -211,16 +226,12 @@ ssize_t perform_broadcast_udp_receiver(RTOptions *rto) {
 
 int main(int argc, char **argv) {
 	// defaults
-	BFOptions bfo = { 
-		  .broadcast = 1
-		, .proto_udp = 1
-		, .receiver = 0
-		, ._if_accessible = 0
-		, ._if_bcast_flag = 0
-		, .__padding = ((1 << 11) - 1)
-	};
+	uint16_t bwf = 
+		   RTO_VALFLAG(BWF_BROADCAST)
+		|  RTO_VALFLAG(BWF_PROTO_UDP)
+		| !RTO_VALFLAG(BWF_RECEIVER);
 	RTOptions rto = {
-		  .f.l = bfo
+		  .flags = bwf
 		, .port = htons(2018)
 		, .addrv4_if = INADDR_ANY
 		, .addrv4_grp = htonl(0xE0000001) // 224.0.0.1
@@ -240,15 +251,15 @@ int main(int argc, char **argv) {
 		//	printf("%c %s = %s\n", e, longOpts[longind].name, optarg);
 
 		switch(e) {
-			case 'B': rto.bflags.broadcast = true; break;
+			case 'B': RTO_SETFLAG(rto.flags, BWF_BROADCAST); break;
 			case 'M': {
 				lassert(inet_pton(AF_INET, optarg, &rto.addrv4_grp) == 1);
-				rto.bflags.broadcast = false;
+				RTO_UNSETFLAG(rto.flags, BWF_BROADCAST);
 			} break;
-			case 'S': rto.bflags.receiver = false; break;
-			case 'R': rto.bflags.receiver = true; break;
-			case 'T': rto.bflags.proto_udp = false; break;
-			case 'U': rto.bflags.proto_udp = true; break;
+			case 'S': RTO_UNSETFLAG(rto.flags, BWF_RECEIVER); break;
+			case 'R': RTO_SETFLAG(rto.flags, BWF_RECEIVER); break;
+			case 'T': RTO_UNSETFLAG(rto.flags, BWF_PROTO_UDP); break;
+			case 'U': RTO_SETFLAG(rto.flags, BWF_PROTO_UDP); break;
 			case 'p': {
 				rto.port = htons((uint16_t)(atoi(optarg)));
 			} break;
@@ -306,10 +317,12 @@ int main(int argc, char **argv) {
 				
 				if(ifap->ifa_flags & IFLA_BROADCAST) {
 					// allow only ifaces with broadcast flag
+					RTO_SETFLAG(rto.flags, BWF_IF_ACCESSIBLE);
+
 					if(rto.addrv4_if.s_addr == addrv4.s_addr) {
 						// TODO: change mask?
 						rto.addrv4_mask = ((struct sockaddr_in*)ifap->ifa_netmask)->sin_addr;
-						rto.bflags._if_accessible = true;
+						RTO_SETFLAG(rto.flags, BWF_IF_ACCESSIBLE);
 					}
 
 					lassert(
@@ -336,14 +349,14 @@ int main(int argc, char **argv) {
 			rto.addrv4_if = ((struct sockaddr_in*)ifap->ifa_addr)->sin_addr;
 			rto.addrv4_mask = ((struct sockaddr_in*)ifap->ifa_netmask)->sin_addr;
 			lassert(inet_ntop(AF_INET, &rto.addrv4_if, addrstr, INET_ADDRSTRLEN) != NULL);
-			rto.bflags._if_accessible = true;
+			RTO_SETFLAG(rto.flags, BWF_IF_ACCESSIBLE);
 			ALOGI("Autoselected interface: %s/%d\n", addrstr, __builtin_popcount(rto.addrv4_mask.s_addr));
 		}
 	}
 
 	print_options(&rto);
 
-	BFRTMode fl_mode = rto.f.numeric_value & 0x7;
+	BFRTMode fl_mode = rto.flags & BWF_MODE_MASK;
 	switch(fl_mode) {
 		//case BMCAST_MULTICAST_TCP_SENDER: break;
 		//case BMCAST_MULTICAST_TCP_RECEIVER: break;

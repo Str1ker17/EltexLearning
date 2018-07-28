@@ -1,7 +1,5 @@
-#ifdef _MSC_VER
-#undef __cplusplus
-#define __builtin_alloca(size) NULL
-#endif
+// Note: this include is a beta feature for design- and compile-time
+#include "../liblinux_util/mscfix.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +22,7 @@ int main(int argc, char **argv) {
 	struct stat *st = (struct stat*)alloca(sizeof(struct stat));
 	__syscall(stat(argv[1], st));
 
-	if((st->st_mode & __S_IFMT) != __S_IFIFO) {
+	if(!S_ISFIFO(st->st_mode)) {
 		printf("[x] File '%s' is not a FIFO (named pipe)\n", argv[1]);
 		exit(EXIT_FAILURE);
 	}

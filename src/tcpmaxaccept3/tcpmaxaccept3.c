@@ -6,10 +6,8 @@
  *				tcpmaxaccept3.c linux_util.c vector.c -lpthread
  */
 
-#ifdef _MSC_VER
-#undef __cplusplus
-#define __builtin_alloca NULL
-#endif
+// Note: this include is a beta feature for design- and compile-time
+#include "../liblinux_util/mscfix.h"
 
 #include <getopt.h>
 #include <stdio.h>
