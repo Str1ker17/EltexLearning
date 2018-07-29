@@ -1,8 +1,8 @@
 /*
- * Bionicle Commander v0.1.2
+ * Bionicle Commander v0.1.2-mips
  * @Author: Str1ker
  * @Created: 28 Jun 2018
- * @Modified: 11 Jul 2018
+ * @Modified: 30 Jul 2018
  */
 
 // Note: this include is a beta feature for design- and compile-time
@@ -275,23 +275,23 @@ void print_files(BCPANEL *panel) {
 		// #define	__S_IFLNK	0120000	/* Symbolic link.  */
 		// #define	__S_IFSOCK	0140000	/* Socket.  */
 
-		__mode_t st_mode = curr->st.st_mode;
-		__mode_t st_type = st_mode & __S_IFMT;
+		mode_t st_mode = curr->st.st_mode;
+		mode_t st_type = st_mode & S_IFMT;
 
-		if ((st_mode & __S_IFREG) && (st_mode & __S_IEXEC)) {
+		if ((st_mode & S_IFREG) && (st_mode & S_IEXEC)) {
 			spec = '*'; attr = A_BOLD; cpair = CPAIR_EXECUTABLE;
 		}
 
 		switch(st_type) {
 			// S_IFLNK won't work with stat(), only lstat()
-			case __S_IFLNK:  { spec = '@'; cpair = CPAIR_TYPE_SYMLINK; } break;
-			case __S_IFSOCK: { spec = '='; cpair = CPAIR_TYPE_SOCKET; } break;
-			case __S_IFDIR:  { spec = '/'; cpair = CPAIR_TYPE_DIR; attr = A_BOLD; } break;
-			case __S_IFBLK:  { spec = '+'; cpair = CPAIR_TYPE_BLK; attr = A_BOLD; } break;
-			case __S_IFCHR:  { spec = '-'; cpair = CPAIR_TYPE_CHR; attr = A_BOLD; } break;
-			case __S_IFIFO:  { spec = '|'; cpair = CPAIR_TYPE_FIFO; } break;
+			case S_IFLNK:  { spec = '@'; cpair = CPAIR_TYPE_SYMLINK; } break;
+			case S_IFSOCK: { spec = '='; cpair = CPAIR_TYPE_SOCKET; } break;
+			case S_IFDIR:  { spec = '/'; cpair = CPAIR_TYPE_DIR; attr = A_BOLD; } break;
+			case S_IFBLK:  { spec = '+'; cpair = CPAIR_TYPE_BLK; attr = A_BOLD; } break;
+			case S_IFCHR:  { spec = '-'; cpair = CPAIR_TYPE_CHR; attr = A_BOLD; } break;
+			case S_IFIFO:  { spec = '|'; cpair = CPAIR_TYPE_FIFO; } break;
 			default: {
-				if(st_type != __S_IFREG)
+				if(st_type != S_IFREG)
 					logprint("[!] Type of file '%s' is not S_IFREG: %08x\n"
 						, curr->ent.d_name, htonl(st_type));
 			}
@@ -427,7 +427,7 @@ bool fs_action(BCPANEL *panel, fs_action_e action) {
 		case FS_ACTION_ENTER: {
 			if(S_ISDIR(curr.st.st_mode))
 				return fs_chdir(panel, curr.ent.d_name);
-			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & __S_IEXEC)
+			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & S_IEXEC)
 				return fs_exec(panel, curr.ent.d_name, action);
 
 			// we can do nothing on other types
@@ -435,7 +435,7 @@ bool fs_action(BCPANEL *panel, fs_action_e action) {
 		}
 
 		case FS_ACTION_VIEW: {
-			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & __S_IREAD)
+			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & S_IREAD)
 				return fs_exec(panel, curr.ent.d_name, action);
 
 			// we can do nothing on other types
@@ -443,7 +443,7 @@ bool fs_action(BCPANEL *panel, fs_action_e action) {
 		}
 
 		case FS_ACTION_EDIT: {
-			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & __S_IWRITE)
+			if(S_ISREG(curr.st.st_mode) && curr.st.st_mode & S_IWRITE)
 				return fs_exec(panel, curr.ent.d_name, action);
 
 			// we can do nothing on other types

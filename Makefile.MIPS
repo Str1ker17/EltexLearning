@@ -3,13 +3,19 @@
 ROOTDIR := $(CURDIR)
 include $(ROOTDIR)/src-build/default-config.mk
 
+# WARNING!
+# If you want to move to another architecture, you might have to recompile ncurses from sources!
 # cross-compiler
 CROSS_COMPILE := /home/striker/bin/cross-compile/lede-sdk-17.01.4-ar71xx-generic_gcc-5.4.0_musl-1.1.16.Linux-x86_64/staging_dir/toolchain-mips_24kc_gcc-5.4.0_musl-1.1.16/bin/mips-openwrt-linux-gcc
 override CC := $(CROSS_COMPILE)
 # whole solution flags
-CFLAGS := -Wno-unused-parameter -march=24kc -msoft-float -I$(ROOTDIR)/src-build/include -I$(ROOTDIR)/src-build/include/ncursesw
+CFLAGS := -Wno-unused-parameter -ansi -march=24kc -mtune=24kc -msoft-float -I$(ROOTDIR)/src-build/arch/mips/include
 # it is unknown for me how to link with target glibc
-LDFLAGS := -msoft-float
+#LDFLAGS := -msoft-float -L/home/striker/bin-src/ncurses-5.9/lib
+LDFLAGS := -msoft-float -L$(ROOTDIR)/src-build/arch/mips/lib
+
+# this is a quirk of openwrt mips toolchain
+STAGING_DIR := /tmp
 
 # -r: save time by omitting `default' targets
 # -R: avoid auto-setting of CC, LD and some other variables

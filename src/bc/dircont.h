@@ -26,7 +26,7 @@ typedef struct __dircont {
 	DIRCONT_LIST_ENTRY *head;
 	DIRCONT_LIST_ENTRY *tail;
 	//DIRCONT_LIST_ENTRY *cur;
-	__ino_t ino_self;
+	ino_t ino_self;
 	size_t count;
 } DIRCONT;
 

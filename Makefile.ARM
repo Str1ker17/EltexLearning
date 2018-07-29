@@ -7,9 +7,9 @@ include $(ROOTDIR)/src-build/default-config.mk
 CROSS_COMPILE := /home/striker/bin/cross-compile/arm-linux-gnueabi-linaro_4.7.4-2014.06/bin/arm-linux-gnueabi-gcc
 override CC := $(CROSS_COMPILE)
 # whole solution flags
-CFLAGS := -Wno-unused-parameter -mabi=aapcs-linux -mfloat-abi=soft -march=armv7-a
+CFLAGS := -Wno-unused-parameter -mabi=aapcs-linux -mfloat-abi=soft -march=armv7-a -I$(ROOTDIR)/src-build/arch/arm/include
 # it is unknown for me how to link with target glibc
-LDFLAGS := -static
+LDFLAGS := -L$(ROOTDIR)/src-build/arch/arm/lib
 
 # -r: save time by omitting `default' targets
 # -R: avoid auto-setting of CC, LD and some other variables
